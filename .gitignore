@@ -194,4 +194,4 @@ cython_debug/
 .cursorindexingignore
 
 # CBIS-DDSM image dataset
-CBIS-DDSM Dataset files/manifest-ZkhPvrLo5216730872708713142/
+CBIS-DDSM_Data/images_dataset/

@@ -197,4 +197,4 @@ cython_debug/
 CBIS-DDSM_Data/images_dataset/
 CBIS-DDSM_Clean_Data/images_png/
 CBIS-DDSM_Clean_Data/images_png_/
-images_png
+CBIS-DDSM_Clean_Data/labeled_images_png

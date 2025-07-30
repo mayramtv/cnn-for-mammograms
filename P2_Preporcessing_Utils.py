@@ -1,4 +1,12 @@
 import pandas as pd
+import numpy as np
+from sklearn.preprocessing import LabelEncoder
+from sklearn.model_selection import train_test_split
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers, models
+from tensorflow.keras.preprocessing.image import load_img, img_to_array
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 # Test
 class Test_py:
@@ -38,37 +46,112 @@ class Image_Enhancement:
 # Data loading and encoding
 def data_loading(train_file, test_file):
     '''Loads data using the files names'''
+    
     base_path = "CBIS-DDSM_Clean_Data/"
     train = pd.read_csv(base_path + train_file)
     test = pd.read_csv(base_path + test_file)
+    
     return train, test
     
-def labels_encoding():
-    pass
+    
+def labels_encoding(train, test):
+    '''Find the number of classes and encodes the classes to integers'''
+    
+    train_data = train.copy()
+    test_data = test.copy()
+    train_data["label"] = LabelEncoder().fit_transform(train_data["pathology"]).astype(np.int32)
+    test_data["label"] = LabelEncoder().fit_transform(test_data["pathology"]).astype(np.int32)
+    
+    return train_data, test_data
+    
+    
+def split_train(train, test, val_size, stratify_col="label"):
+    '''Divide training data into training and validation makes a copy of test data'''
+    train_data, val_data = train_test_split(train, 
+                                        test_size=val_size, 
+                                        stratify=train[stratify_col], 
+                                        random_state=42
+                                       )
+    test_data = test.copy()
+    total = len(train_data) + len(val_data) + len(test_data)
+    train_percent =  round(((len(train_data) * 100)/ total), 2)
+    val_percent =  round(((len(val_data) * 100)/ total), 2)
+    test_percent =  round(((len(test_data) * 100)/ total), 2)
+    
+    print("Train set:", len(train_data), "cases,", train_percent, "%")
+    print("Validation set:", len(val_data), "cases,", val_percent, "%")
+    print("Test set:", len(test_data), "cases,", test_percent, "%")
+    return train_data, val_data, test_data
+    
 
-def split_train():
-    pass
+def image_iterator(data_sets, suffle=False):
+    '''Generate a data generator for processing each image''' 
+    
+    # function for setup generators
+    def data_generator(dataset, target_size, shuffle):
+        # initiate generators
+        gen = ImageDataGenerator()
+        data_gen = t_generator.flow_from_dataframe(
+                                            dataframe=dataset,
+                                            x_col="image_path",
+                                            y_col="label",
+                                            target_size=target_size,
+                                            color_mode="grayscale",
+                                            class_mode="raw",
+                                            batch_size=32,
+                                            shuffle=shuffle,
+                                            seed=42
+                                            )
+        return data_gen
 
-def image_iterator(d_set, suffle=False):
-    pass
+    # setup generators
+    train_gen = data_generator(train_data, (256, 256), True)
+    val_gen = data_generator(val_data, (256, 256), False)
+    test_gen = data_generator(test_data, (256, 256), False)
+    
+    return train_gen, val_gen, test_gen
 
 
 # Basic custom model
 
 class Basic_Custom_CNN:
-    def __init__(self, phase, input_shape, train_data, val_data, test_data, epochs):
+    '''Setup and runs model'''
+    def __init__(self, phase=2, input_shape=(256, 256, 1), num_classes=2, epochs):
         self.phase = phase
         self.input_shape = input_shape
-        self.train_data = train_data
-        self.val_data = val_data
-        self.test_data = test_data
+        self.classes = num_classes
         self.epochs = epochs
+        self.model = None
     
-    def custom_CNN_architecture(self):
-        pass
+    def architecture(self):
+        '''Sets up model architecture for custom CNN'''
+        inputs = keras.Input(shape=self.input_shape)
+        model = models.Sequential([
+                                inputs,
+                                layers.Rescaling(1./255),                                           
+                                layers.Conv2D(filters=32, kernel_size=3, activation='relu'),        # kernel size 3x3
+                                layers.MaxPool2D(pool_size=2),                                      # pool size 2x2
+                        
+                                layers.Conv2D(filters=64, kernel_size=3, activation='relu'),
+                                layers.MaxPool2D(pool_size=2),
+                        
+                                layers.Conv2D(filters=128, kernel_size=3, activation='relu'),
+                                layers.MaxPool2D(pool_size=2),
+                        
+                                layers.Flatten(),
+                                layers.Dense(self.classes, activation='softmax')   
+                                ])
+        model. compile(loss='sparse_categorical_crossentropy',
+                       optimizer='adam',
+                       metrics=['accuracy']
+                       )
     
-    def custom_CNN_train(self):
-        pass
+        self.model = model
+    
+    def train_model(self):
+        # fit data to model
+        history = model.fit(train_gen, validation_data=val_gen, epochs=10)
+        history
     
     def custom_CNN_fit(self):
         pass

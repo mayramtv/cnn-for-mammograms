@@ -238,13 +238,14 @@ class Save_Data:
         else:
             self.output_data = {}
         
-    def add_model_data(self, model_name, model_path, metrics, project_phase, comments=""):
+    def add_model_data(self, model_name, model_path, metrics, y_labels, project_phase, comments=""):
         '''Saves model data into a dictionary'''
         
         self.output_data[model_name] = {
             'time_stamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'model_path': model_path,
-            'evaluation_metrics': metrics,
+            'metrics': metrics,
+            'labels': y_labels,
             'project_phase': project_phase,
             'comments': comments
         }
@@ -272,17 +273,118 @@ class Visualization:
         else:
             print("No models are saved")
 
-    def confusion_matrix(self, model_name):
+    def confusion_matrices(self, models_data, models_to_show, classes=None):
+        '''
+        Plot one or more confusion matrices 
+        
+        Parameters:
+        - models data: a dictionary with each model and its respective data
+        - models_to_show: a list of the models confusion matrices needed to be displayed
+        - classes: a list of the classes ('Benigant', 'Malignant')
+        '''
+        if len(models_to_show) == 1:
+            # gets model's data
+            model_name = models_to_show[0]
+            cm_data = models_data[model_name]["metrics"]["confusion_matrix"]
+            # creates display for confusion matrix 
+            # code inspiration from 
+            # https://medium.com/@eceisikpolat/plot-and-customize-multiple-confusion-matrices-with-matplotlib-a19ed00ca16c
+            disp = ConfusionMatrixDisplay(confusion_matrix=cm_data, display_labels=classes)
+            disp.plot(cmap=plt.cm.Blues)
+            plt.title(f"Confusion Matrix: {model_name}")
+            plt.show()
+        else:
+            num_models = len(models_to_show)
+            if num_models % 2 == 0:
+                cols = 2
+                rows = int(num_models/cols)
+            else:
+                cols = 3
+                rows = int(np.ceil(num_models/cols))
+            fig, axs = plt.subplots(rows, cols, figsize=(cols * 4, rows * 4))
+            axs = axs.flatten()
+    
+            # iterate models to display confusion matrices
+            for i, model in enumerate(models_to_show):
+                cm_data = models_data[model]["metrics"]["confusion_matrix"]
+                disp = ConfusionMatrixDisplay(confusion_matrix=cm_data, display_labels=classes)
+                disp.plot(ax=axs[i], cmap=plt.cm.Blues)
+                axs[i].set_title(f"{model}")
+    
+            # remove not used axes
+            for ax in range(num_models, len(axs)):
+                fig.delaxes(axs[ax])
+    
+            # show plot
+            plt.tight_layout()
+            plt.show()
         
 
-    def line_plot(self):
-        pass
+    def line_plot(self, models_data, models_to_show, metrics):
+        '''
+        Plot one or more metrics in a line plot 
+        
+        Parameters:
+        - models data: a dictionary with each model and its respective data
+        - models_to_show: a list of the models confusion matrices needed to be displayed
+        - metrics: a list of the metrics to add at the line plot.
+        '''
+    
+        # plots each metric for each model
+        for metric in metrics:
+            y_vals = []
+            for model in models_to_show:
+                y_vals.append(models_data[model]["metrics"][metric]) 
+            plt.plot(models_to_show, y_vals, label=metric, marker='o')
+    
+        # Add labels to the plot
+        plt.xlabel('Models')
+        plt.ylabel('Performance Score')
+        plt.title('Performance Metrics Comparison Across Models')
+        plt.legend()
+        
+        # Show plot
+        plt.show()
+        
 
     def learning_curves(self):
         pass
 
-    def spider_radar(self):
-        pass
+    def radar_chart(self, models_data, models_to_show, metrics):
+        # number of metrics
+        num_metrics = len(metrics)
+        
+        # calculate the angles of each axis
+        angles = np.linspace(0, 2 * np.pi, num_metrics, endpoint=False).tolist()
+        angles += angles[:1]
+    
+        # create plot
+        fig, ax = plt.subplots(figsize=(6, 6), subplot_kw=dict(polar=True))
+    
+        # plots each model for each metric
+        for model in models_to_show:
+            y_vals = []
+            for metric in metrics:
+                y_vals.append(models_data[model]["metrics"][metric]) 
+            y_vals.append(y_vals[0])
+            print(f"Model: {model} | angles: {len(angles)} | y_vals: {len(y_vals)}")
+            ax.plot(angles, y_vals, label=model, marker='o')
+            ax.fill(angles, y_vals, alpha=0.1)
+    
+        # Set labels for each metric
+        ax.set_xticks(angles[:-1]) #removes closing tick
+        ax.set_xticklabels(metrics)
+        ax.set_yticks([0.2, 0.4, 0.6, 0.8])
+        ax.set_yticklabels(['0.2', '0.4', '0.6', '0.8'])
+    
+        # center axis
+        ax.set_theta_offset(np.pi / 2)
+        ax.set_theta_direction(-1)
+        ax.set_rlabel_position(0)
+        
+        plt.title('Performance Metrics Comparison Across Metrics')
+        ax.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1))
+        plt.show()
 
     def ROC_curve(self):
         pass

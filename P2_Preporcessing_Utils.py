@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import confusion_matrix, accuracy_score,  f1_score, precision_score, recall_score, roc_auc_score
+from sklearn.metrics import confusion_matrix, accuracy_score,  f1_score, precision_score, recall_score, roc_auc_score, roc_curve, auc
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers, models
@@ -182,6 +182,7 @@ class Evaluation:
     def __init__(self, model):
         self.model = model
         self.metrics = {}
+        slef.labels = {}
 
     def evaluate(self, test_gen):
         '''Evaluate model and return metrics defined during model compile'''
@@ -190,14 +191,9 @@ class Evaluation:
     def predict(self, test_gen):
         '''Makes predictions on unseen data'''
         return self.model.predict(test_gen) 
-
-    def confusion_matrix(self):
-        '''Claculate confusion metrics and return:
-        True Negative, False Positive, False Negative and True Positive'''
-
         
 
-    def calculate_metrics(self, y_true, y_predics, conf_matrix):
+    def calculate_metrics(self, y_true, y_probs, conf_matrix):
         '''Claculate confusion matrix (True Negative, False Positive, False Negative and True Positive) 
         and evaluation metrics (Accuracy, Precision, Recall, F1 score, AUC
         Specificity, False Positive Rate, and False Negative Rate)'''
@@ -213,10 +209,14 @@ class Evaluation:
         self.metrics["precision"] = precision_score(y_true, y_pred_class) # Positive predicive value: identify correct positives
         self.metrics["recall"] = recall_score(y_true, y_pred_class)       # sensitivity: identify positives 
         self.metrics["f1_score"] = f1_score(y_true, y_pred_class)
-        self.metrics["auc"] = roc_auc_score(y_true, y_predics)
+        self.metrics["roc_auc"] = roc_auc_score(y_true, y_probs)
         self.metrics["specificity"] = tn / (tn + fp)     # Identify negatives 
         self.metrics["fpr"] = fp / (fp + tn)             # identify false positive rate
         self.metrics["fnr"] = fn / (fn + tp)             # identify false negative rate
+
+        # saves y_true labels and predictions 
+        self.labels["y_true"] = y_true
+        self.labels["y_probs"] = y_probs
 
 
 # Save output data
@@ -345,10 +345,7 @@ class Visualization:
         
         # Show plot
         plt.show()
-        
-
-    def learning_curves(self):
-        pass
+    
 
     def radar_chart(self, models_data, models_to_show, metrics):
         # number of metrics
@@ -382,11 +379,29 @@ class Visualization:
         ax.set_theta_direction(-1)
         ax.set_rlabel_position(0)
         
-        plt.title('Performance Metrics Comparison Across Metrics')
+        plt.title('Model Performance Comparison Across Metrics')
         ax.legend(loc='upper right', bbox_to_anchor=(1.2, 1.1))
         plt.show()
 
-    def ROC_curve(self):
+    def ROC_curve(self, models_data, models_to_show):
+        for model in models_to_show:
+            # calculate false positive rate and true positive rate using the ROC curve 
+            fpr, tpr, _ = roc_curve(models_data[model]["labels"]["y_true"], models_data[model]["labels"]["y_probs"])
+            # get roc_auc value 
+            roc_auc = models_data[model]["metrics"]["roc_auc"]
+    
+            # initiate plot
+            plt.plot(fpr, tpr, label=f'{model} (AUC = {roc_auc:.2f})')
+    
+        # format plot 
+        plt.plot([0, 1], [0, 1], 'k--')
+        plt.title('ROC Curves Comparison')
+        plt.xlabel('False Positive Rate')
+        plt.ylabel('True Positive Rate')
+        plt.xlim([0.0, 1.0])
+        plt.ylim([0.0, 1.05])
+        plt.legend(loc='lower right')
+        plt.show()
+
+    def learning_curves(self):
         pass
-
-

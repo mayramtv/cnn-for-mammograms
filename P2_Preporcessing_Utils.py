@@ -31,6 +31,29 @@ class Image_Enhancement:
         self.data = data
         self.preprocessing_options = preprocessing_options
 
+    def background_removal(image):
+        # smooth image
+        blur_img = cv2.GaussianBlur(image, (5,5), 0)
+    
+        # gets Otsu threshold 
+        _, thresh = cv2.threshold(blur_img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU) 
+    
+        # apply morphological closing to make sure parts of the breast are not removed 
+        kernel = np.ones((15, 15), np.uint8) 
+        closed_img = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+    
+        # Identify connecting regions for each pixel edge and corner (8) of binary image 
+        num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(closed_img, connectivity=8)
+    
+        # find the largest component that is connected
+        largest_label = 1 + np.argmax(stats[1:, cv2.CC_STAT_AREA])
+        
+        # generate mask of black background
+        mask = (labels == largest_label).astype(np.uint8) * 255
+        breast_img = cv2.bitwise_and(image, image, mask=mask)
+
+    return breast_img
+
     def crop(self):
         pass
     
@@ -70,7 +93,7 @@ def labels_encoding(train, test):
     return train_data, test_data
     
     
-def split_train(train, test, val_size, stratify_col="label"):
+def split_data(train, test, val_size, stratify_col="label"):
     '''Divide training data into training and validation makes a copy of test data'''
     train_data, val_data = train_test_split(train, 
                                         test_size=val_size, 

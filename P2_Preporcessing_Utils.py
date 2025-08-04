@@ -52,7 +52,7 @@ class Image_Enhancement:
         mask = (labels == largest_label).astype(np.uint8) * 255
         breast_img = cv2.bitwise_and(image, image, mask=mask)
 
-    return breast_img
+    return breast_img, mask
 
     def crop(self):
         pass

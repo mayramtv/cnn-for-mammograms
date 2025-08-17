@@ -31,7 +31,7 @@ class Visualization:
         num_vis = len(data)
         if num_vis % 4 == 0:
             cols = 4
-            rows = 1
+            rows = int(num_vis / cols)
         else:
             cols = 3
             rows = int(np.ceil(num_vis / cols))

@@ -17,12 +17,20 @@ def test_py(t_name):
 
 # Preprocessing techniques to try
 
-class Image_Enhancement:
-    def __init__(self, data, preprocessing_options):
-        self.data = data
-        self.preprocessing_options = preprocessing_options
+def image_preprocessing(image, options):
+    # for option_name in options:
+    #     if option_name is  
+    
 
     def background_removal(image):
+        '''
+            Removes edge of whole image, blur to find Otsu threshold, finds closed mask, 
+            find the largest connected region and generate Otsu mask to remove background and leave only breast
+        '''
+        # resize to remove a contour of the whole image to remove some of the marks of x-rays that are not the breast
+        height, width = image.shape[:2]
+        image = image[45:height-45, 45:width-45]
+    
         # smooth image
         blur_img = cv2.GaussianBlur(image, (5,5), 0)
     
@@ -42,23 +50,154 @@ class Image_Enhancement:
         # generate mask of black background
         mask = (labels == largest_label).astype(np.uint8) * 255
         breast_img = cv2.bitwise_and(image, image, mask=mask)
+    
+        return closed_img, image, mask, breast_img
 
-    return breast_img, mask
+    
 
-    def crop(self):
-        pass
+    def crop(image):    
+        ''' Find contours of breast image using the mask.''' 
+        # - RETR_EXTERNAL: defines only external countour of the biggest section, 
+        # - CHAIN_APPROX_SIMPLE: saves only non redundant and the simplest points of the countour 
+        # source: https://medium.com/analytics-vidhya/opencv-findcontours-detailed-guide-692ee19eeb18
+        contours, _ = cv2.findContours(breast_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        # checks for non-countour
+        if len(contours) == 0:
+            return image
     
-    def noise_reduction(self):
-        pass
+        # find the countour area
+        # source: https://docs.opencv.org/3.4/dd/d49/tutorial_py_contour_features.html
+        area = max(contours, key=cv2.contourArea)
+        
+        # find the bounding box
+        x, y, w, h = cv2.boundingRect(area)
     
-    def edge_enhancement(self):
-        pass
+        # crops image using bounding box
+        cropped = image[y:y+h, x:x+w]
+        
+        return cropped
+
     
-    def background_removal(self):
-        pass
+     
+    def noise_reduction_WT(image):
+        '''
+        Noise removal using Wavelet with Soft Otsu Threshold: 
+           - calculating coefficients of approximation and detail
+           - calculating sigma value
+           - calculating and applying soft thresholding value to coefficients 
+           - and reconstructing image using coefficinets
+        '''
+        
+        # Calculate coefficients for the image using wavedec2 for 2D (image) decomposition 
+        # using the  Daubechies wavelet db1 (Haar wavelet of interval of 0-1)  
+        init_coeffs = pywt.wavedec2(image, wavelet="db1", level=2)
     
-    def textural_preporcessing(self):
-        pass
+        # calculate sigma of the detail coefficients
+        sigma = estimate_sigma(image, channel_axis=None)
+    
+        # calculate initial threshold
+        init_threshold = sigma * np.sqrt(2 * np.log2(image.size))
+    
+        # iterate through detail coefficients to apply threshhold function using the initial threshold
+        new_coeffs = [init_coeffs[0]]
+    
+        for level in init_coeffs[1:]:
+            tuple_vals = tuple(pywt.threshold(detail, init_threshold, mode='soft') for detail in level)
+            new_coeffs.append(tuple_vals)
+    
+        # Reconstruct image using waverec2
+        denoised_img = pywt.waverec2(new_coeffs, wavelet="db1")
+        reconstructed = denoised_img[:image.shape[0], :image.shape[1]]
+        
+        return reconstructed
+
+    
+
+    def contrast_enhancement(image):
+        '''
+        Distribute gray peaks of image
+        '''
+        # code provenance 
+        # https://docs.opencv.org/4.x/d5/daf/tutorial_py_histogram_equalization.html
+    
+        # verify the image is in gray scale
+        if len(image.shape) == 3:  # If color image
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    
+        # verify image is intiger type 
+        if image.dtype != np.uint8:
+            image = cv2.normalize(image, None, 0, 255, cv2.NORM_MINMAX)
+            image = image.astype(np.uint8)
+    
+        # initialize CLAHE and apply to image
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+        clh_image = clahe.apply(image)
+        
+        return clh_imag
+
+    
+    
+    def edge_enhancement(guide_image, input_image, radius=8, epsilon = 0.0002):    
+        '''
+            Uses guided filter to smooth image and keep edges sharp. 
+            Uses input image to be filter and as guide for pixel smoothness. Parameters are:
+            - guided image
+            - input image
+            - kernel radius
+            - regularization value
+        '''
+    
+        # Normalize value
+        guide_image = guide_image.astype(np.float32) / 255.0
+        input_image = input_image.astype(np.float32) / 255.0
+        
+        # compute local mean: guidance and input image
+        mean_guide = cv2.boxFilter(guide_image, -1, (radius, radius)) # depth is -1 for source depth
+        mean_input = cv2.boxFilter(input_image, -1, (radius, radius)) # depth is -1 for source depth
+        mean_g_i = cv2.boxFilter(guide_image * input_image, -1, (radius, radius)) # mean of product of both images
+        mean_g_g = cv2.boxFilter(guide_image * guide_image, -1, (radius, radius))# loacl mean of product of guide image
+        
+        # calculate variance 
+        covar_g_i = mean_g_i - mean_guide * mean_input # of the product of loacl means of both images
+        var_g = mean_g_g - mean_guide * mean_guide # of guidance image 
+    
+        # calculate coefficinets using means , covariance and variance
+        alpha = covar_g_i / (var_g + epsilon)
+        beta = mean_input - alpha * mean_guide
+    
+        # calculate mean of coefficinets
+        mean_alpha = cv2.boxFilter(alpha, -1, (radius, radius))
+        mean_beta = cv2.boxFilter(beta, -1, (radius, radius))
+    
+        # apply mean of alpha to the guide image and add mean of beta
+        filtered = mean_alpha * guide_image + mean_beta
+    
+        # convert back to intigers
+        filtered = (filtered * 255).astype(np.uint8)
+    
+        return filtered
+
+    
+    
+    def lbp_texturizer(image, n_points=8, radius=1):
+        '''Calculate the local binary pattern of an image: checks for sourronding points of the kernel
+            and gives a binary value depending if bigger or smaller than the center point. Parameters are:
+            - image
+            - number of points around center point
+            - radius of kernel
+        '''
+        # convert to gray scale
+        if len(image.shape) == 3:
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    
+        # calculate local binary pattern
+        lbp = local_binary_pattern(image, n_points, radius)
+    
+        # normalize image for visualization
+        lbp_img = np.uint8(255 * (lbp - lbp.min()) / (lbp.max() - lbp.min()))
+    
+        return lbp_img
 
 
 

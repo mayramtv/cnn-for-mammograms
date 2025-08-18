@@ -3,6 +3,7 @@ import numpy as np
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from skimage.feature import local_binary_pattern
 
 # Test
 class Test_py:
@@ -55,12 +56,15 @@ def image_preprocessing(image, options):
 
     
 
-    def crop(image):    
+    def crop(image, breast_mask=None):    
         ''' Find contours of breast image using the mask.''' 
         # - RETR_EXTERNAL: defines only external countour of the biggest section, 
         # - CHAIN_APPROX_SIMPLE: saves only non redundant and the simplest points of the countour 
         # source: https://medium.com/analytics-vidhya/opencv-findcontours-detailed-guide-692ee19eeb18
-        contours, _ = cv2.findContours(breast_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if breast_mask == None:
+            contours, _ = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if breast_mask:
+            contours, _ = cv2.findContours(breast_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
         # checks for non-countour
         if len(contours) == 0:
@@ -78,9 +82,50 @@ def image_preprocessing(image, options):
         
         return cropped
 
+    def resize(image, resnet_vgg=False, custom_cnn_size=256, resnet_vgg_size=224):
+        '''
+        Resize an image to fit a custom CNN, ResNet and VGG models
+        Parameters:
+            image: image to be resized
+            custom_cnn: Boolean stating if the size is for custom CNN
+            resnet_vgg: Boolean stating if the size is for ResNet/VGG models
+        '''
+    
+        # convert image to tensorflow image
+        img = tf.image.convert_image_dtype(image, tf.float32)
+    
+        # Adds  3rd channel
+        if img.ndim == 2:
+            img = tf.expand_dims(img, axis=-1)
+            
+        if resnet_vgg == False:
+                
+            # resize image and add pad to keep image proportions
+            # source https://www.tensorflow.org/api_docs/python/tf/image/resize_with_pad
+            resized_img = tf.image.resize_with_pad([img], custom_cnn_size, custom_cnn_size)
+    
+            # normalize image
+            # source https://www.tensorflow.org/api_docs/python/tf/clip_by_value
+            input_resized_img = tf.clip_by_value(img, 0.0, 1.0)
+            
+        else:
+            # converts image to RGB for Resnet/VGG input
+            if img.shape[-1] == 1:
+                img = tf.image.grayscale_to_rgb(img)
+            
+            # resize image and add pad to keep image proportions
+            # https://www.tensorflow.org/api_docs/python/tf/image/resize
+            resized_img = tf.image.resize_with_pad([img], resnet_vgg_size, resnet_vgg_size)
+    
+            # normalize image
+            # source https://www.tensorflow.org/api_docs/python/tf/keras/applications/resnet/preprocess_input
+            input_resized_img = tf.keras.applications.resnet50.preprocess_input(resized_img * 255.0)
+    
+        return input_resized_img, resized_img[0]
+        
     
      
-    def noise_reduction_WT(image):
+    def noise_reduction(image, breast_mask):
         '''
         Noise removal using Wavelet with Soft Otsu Threshold: 
            - calculating coefficients of approximation and detail

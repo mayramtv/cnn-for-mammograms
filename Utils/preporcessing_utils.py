@@ -1,10 +1,12 @@
 import pandas as pd
 import numpy as np
+from functools import partial
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from skimage.feature import local_binary_pattern
 import tensorflow as tf
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+
 
 # Test
 class Test_py:
@@ -12,10 +14,10 @@ class Test_py:
         self.t_name = t_name
 
     def print_(self):
-        return "Class: Try if python utils connects to notebook: " + self.t_name
+        return "Class -> Try if python utils connects to notebook: " + self.t_name
 
 def test_py(t_name):
-    return "Function: Try if python utils connects to notebook: " + t_name
+    return "Function -> Try if python utils connects to notebook: " + t_name
 
 # Preprocessing techniques to try
 
@@ -33,37 +35,6 @@ def image_preprocessing(image,
         - custom_cnn_size is the size for the Custom CNN model input image to be resized
         - resnet_vgg_size is the size for the ResNet/VGG models input image to be resized"
     '''
-    img = image.copy()
-    breast_mask = None
-    is_lbp = False
-    
-    if preprocessing_techniques["apply_background_removal"] == True:
-        _, _, breast_mask, img = background_removal(img)
-
-    if preprocessing_techniques["apply_crop"] == True:
-        img = crop(img, breast_mask)
-
-    if preprocessing_techniques["apply_noise_reduction"] == True:
-        img = noise_reduction_WT(img)
-
-    if preprocessing_techniques["apply_contrast_enhancement"] == True:
-        img = contrast_enhancement(img)
-
-    if preprocessing_techniques["apply_edge_enhancement"] == True:
-        img = edge_enhancement(img, img)
-
-    if preprocessing_techniques["apply_lbp_texturizer"] == True:
-        img = lbp_texturizer(img)
-        is_lbp=True
-
-    img = resize(img, 
-                 is_resnet_vgg=is_resnet_vgg, 
-                 custom_cnn_size=custom_cnn_size, 
-                 resnet_vgg_size=resnet_vgg_size, 
-                 is_lbp=is_lbp)
-
-    return img
-    
 
     def background_removal(image):
         '''
@@ -292,6 +263,38 @@ def image_preprocessing(image,
         
             return input_resized_img
 
+    img = image.copy()
+    breast_mask = None
+    is_lbp = False
+    
+    if preprocessing_techniques["apply_background_removal"] == True:
+        _, _, breast_mask, img = background_removal(img)
+
+    if preprocessing_techniques["apply_crop"] == True:
+        img = crop(img, breast_mask)
+
+    if preprocessing_techniques["apply_noise_reduction"] == True:
+        img = noise_reduction_WT(img)
+
+    if preprocessing_techniques["apply_contrast_enhancement"] == True:
+        img = contrast_enhancement(img)
+
+    if preprocessing_techniques["apply_edge_enhancement"] == True:
+        img = edge_enhancement(img, img)
+
+    if preprocessing_techniques["apply_lbp_texturizer"] == True:
+        img = lbp_texturizer(img)
+        is_lbp=True
+
+    img = resize(img, 
+                 is_resnet_vgg=is_resnet_vgg, 
+                 custom_cnn_size=custom_cnn_size, 
+                 resnet_vgg_size=resnet_vgg_size, 
+                 is_lbp=is_lbp)
+
+    return img
+    
+
 # Data loading and encoding
 def data_loading(train_file, test_file):
     '''Loads data using the files names'''
@@ -333,13 +336,34 @@ def split_data(train, test, val_size, stratify_col="label"):
     return train_data, val_data, test_data
     
 
-def image_iterator(data_sets, suffle=False):
-    '''Generate a data generator for processing each image''' 
+def image_iterators(data_sets, 
+                    is_resnet_vgg=False
+                    preporcessing_techniques=None):
+    '''
+        Generate a data generator for each dataset 
+    '''
+    if is_resnet_vgg:
+        size = 224
+    else:
+        size = 256
+
+    # function contain only the image and other arguments are frozen 
+    preprocessing_function = partial(image_preprocessing, 
+                       preprocessing_techniques,
+                       is_resnet_vgg=is_resnet_vgg,
+                       custom_cnn_size=size, 
+                       resnet_vgg_size=size)
     
     # function for setup generators
-    def data_generator(dataset, target_size, shuffle):
+    def data_generator(dataset, 
+                       target_size=(256,256), 
+                       shuffle=False, 
+                       preprocessing_func=preprocessing_function):
+        '''
+        Generate a data generator for processing each image
+        '''
         # initiate generators
-        gen = ImageDataGenerator()
+        gen = ImageDataGenerator(preprocessing_function=preprocessing_func)
         data_gen = t_generator.flow_from_dataframe(
                                             dataframe=dataset,
                                             x_col="image_path",

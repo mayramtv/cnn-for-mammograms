@@ -20,12 +20,13 @@ class Save_Data:
         else:
             self.output_data = {}
         
-    def add_model_data(self, model_name, model_path, metrics, y_labels, project_phase, comments=""):
+    def add_model_data(self, model_name, model_path, history, metrics, y_labels, project_phase, comments=""):
         '''Saves model data into a dictionary'''
         
         self.output_data[model_name] = {
             'time_stamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'model_path': model_path,
+            "history": history,
             'metrics': metrics,
             'labels': y_labels,
             'project_phase': project_phase,

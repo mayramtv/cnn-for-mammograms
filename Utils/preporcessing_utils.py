@@ -8,17 +8,6 @@ import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 
-# Test
-class Test_py:
-    def __init__(self, t_name="test0"):
-        self.t_name = t_name
-
-    def print_(self):
-        return "Class -> Try if python utils connects to notebook: " + self.t_name
-
-def test_py(t_name):
-    return "Function -> Try if python utils connects to notebook: " + t_name
-
 # Preprocessing techniques to try
 
 def image_preprocessing(image, 
@@ -336,9 +325,7 @@ def split_data(train, test, val_size, stratify_col="label"):
     return train_data, val_data, test_data
     
 
-def image_iterators(data_sets, 
-                    is_resnet_vgg=False
-                    preporcessing_techniques=None):
+def image_iterators(data_sets, is_resnet_vgg=False, preprocessing_techniques=None):
     '''
         Generate a data generator for each dataset 
     '''
@@ -355,16 +342,13 @@ def image_iterators(data_sets,
                        resnet_vgg_size=size)
     
     # function for setup generators
-    def data_generator(dataset, 
-                       target_size=(256,256), 
-                       shuffle=False, 
-                       preprocessing_func=preprocessing_function):
+    def data_generator(dataset, target_size=(256,256), shuffle=False, preprocessing_func=preprocessing_function):
         '''
         Generate a data generator for processing each image
         '''
         # initiate generators
         gen = ImageDataGenerator(preprocessing_function=preprocessing_func)
-        data_gen = t_generator.flow_from_dataframe(
+        data_gen = gen.flow_from_dataframe(
                                             dataframe=dataset,
                                             x_col="image_path",
                                             y_col="label",
@@ -378,13 +362,39 @@ def image_iterators(data_sets,
         return data_gen
 
     # setup generators
-    train_gen = data_generator(train_data, (256, 256), True)
-    val_gen = data_generator(val_data, (256, 256), False)
-    test_gen = data_generator(test_data, (256, 256), False)
+    train_data, val_data, test_data = data_sets
+    
+    train_gen = data_generator(data_sets, (size, size), True, preprocessing_func=preprocessing_function)
+    val_gen = data_generator(val_data, (size, size), False, preprocessing_func=preprocessing_function)
+    test_gen = data_generator(test_data, (size, size), False, preprocessing_func=preprocessing_function)
     
     return train_gen, val_gen, test_gen
 
+def ablation(options):    
+    '''
+    Creates a dictionary with the group of techniques selected by using ablation
+    '''
+    # by using ablation, create the combinations of techniques 
+    techniques_groups = {}
+    techniques_groups["Baseline Basic Preporcessing"] = {option:False for option in options} # no techniques
+    techniques_groups["All Preporcessing Techniques"] = {option:True for option in options} # all tecniuqes
 
+    # removes one techniques at a time 
+    for option in options:
+        # creates the name of each technique
+        group_name = option.split("_")[1:]
+        group_name =  "No " + " ".join(group_name).capitalize()
+        tech_group = {}
+        # then uses techniques for applying a boolean
+        for technique in options: 
+            if technique != option:
+                tech_group[technique] = True
+            else:
+                tech_group[technique] = False
+                
+        techniques_groups[group_name] = tech_group
+
+    return techniques_groups
 
 
 

@@ -6,9 +6,9 @@ from tensorflow.keras import layers, models
 
 class Basic_Custom_CNN:
     '''
-    Basic custom model architecture and setup and runs model
+    Basic custom model architecture. Setups, runs and saves model
     '''
-    def __init__(self, input_shape=(256, 256, 1), num_classes=2, epochs):
+    def __init__(self, input_shape=(256, 256, 1), num_classes=2, epochs=10):
         self.input_shape = input_shape
         self.classes = num_classes
         self.epochs = epochs
@@ -32,28 +32,28 @@ class Basic_Custom_CNN:
                                 layers.Flatten(),
                                 layers.Dense(self.classes, activation='softmax')   
                                 ])
-        model. compile(loss='sparse_categorical_crossentropy',
+        model.compile(loss='sparse_categorical_crossentropy',
                        optimizer='adam',
                        metrics=['accuracy']
                        )
     
         self.model = model
     
-    def train_model(self, train_gen, val_gen=None epochs=10):
+    def train_model(self, train_gen, val_gen=None):
         '''Trains model'''
         # verify that model is initialized
         if self.model is None:
             raise ValueError("You need to initialize model using architecture() before training")
             
         # fit data to model
-        model.fit(train_gen, validation_data=val_gen, epochs=epochs)
+        self.model.fit(train_gen, validation_data=val_gen, epochs=self.epochs)
         
     def get_model(self):
         '''Returns trained model'''
         return self.model
 
-    def save_model(self, models_directory="Models", model_file):
-        '''Save model '''
+    def save_model(self, models_directory="Models", model_file="new_file"):
+        '''Save model data'''
 
         # makes directory for outputs
         os.makedir(models_directory, exist_ok=True)
@@ -61,6 +61,8 @@ class Basic_Custom_CNN:
         # creates path and saves model
         path = os.path.join(models_directory, model_file)
         self.model.save(path)
+
+        return path
 
 class Custom_CNN:
     def __init__(self, phase, input_shape, train_data, val_data, test_data, epochs):

@@ -204,5 +204,5 @@ class Visualization:
         plt.legend(loc='lower right')
         plt.show()
 
-    def learning_curves(self):
+    def learning_curves(self, history):
         pass

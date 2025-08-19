@@ -17,7 +17,7 @@ class Evaluation:
         return self.model.predict(test_gen) 
         
 
-    def calculate_metrics(self, y_true, y_probs, conf_matrix):
+    def calculate_metrics(self, y_true, y_probs):
         '''Claculate confusion matrix (True Negative, False Positive, False Negative and True Positive) 
         and evaluation metrics (Accuracy, Precision, Recall, F1 score, AUC
         Specificity, False Positive Rate, and False Negative Rate)'''
@@ -41,3 +41,13 @@ class Evaluation:
         # saves y_true labels and predictions 
         self.labels["y_true"] = y_true
         self.labels["y_probs"] = y_probs
+
+        return self.metrics
+
+    def get_metrics(self):
+        '''Returns model evaluation metrics'''
+        return self.metrics
+
+    def get_labels(self):
+        '''Returns model labels'''
+        return self.labels

@@ -11,7 +11,7 @@ class Save_Data:
         self.path = os.path.join(self.out_directory, self.file_name)
         
         # makes directory for outputs
-        os.makedir(out_directory, exist_ok=True)
+        os.makedirs(out_directory, exist_ok=True)
 
         # open json file, if exist, to load existing output data
         if os.path.exist(self.path):

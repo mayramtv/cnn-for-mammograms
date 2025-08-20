@@ -18,23 +18,28 @@ class Basic_Custom_CNN:
         '''Sets up model architecture for custom CNN'''
         inputs = keras.Input(shape=self.input_shape)
         model = models.Sequential([
-                                inputs,
-                                layers.Rescaling(1./255),                                           
-                                layers.Conv2D(filters=32, kernel_size=3, activation='relu'),        # kernel size 3x3
-                                layers.MaxPool2D(pool_size=2),                                      # pool size 2x2
-                        
-                                layers.Conv2D(filters=64, kernel_size=3, activation='relu'),
-                                layers.MaxPool2D(pool_size=2),
-                        
-                                layers.Conv2D(filters=128, kernel_size=3, activation='relu'),
-                                layers.MaxPool2D(pool_size=2),
-                        
-                                layers.Flatten(),
-                                layers.Dense(self.classes, activation='softmax')   
+                                    inputs,
+                                    layers.Rescaling(1./255),                                           
+                                    layers.Conv2D(filters=32, kernel_size=3, activation='relu'),        # kernel size 3x3
+                                    layers.MaxPool2D(pool_size=2),                                      # pool size 2x2
+                            
+                                    layers.Conv2D(filters=64, kernel_size=3, activation='relu'),
+                                    layers.MaxPool2D(pool_size=2),
+                            
+                                    layers.Conv2D(filters=128, kernel_size=3, activation='relu'),
+                                    layers.MaxPool2D(pool_size=2),
+                            
+                                    layers.Flatten(),
+                                    layers.Dense(2, activation='softmax')   
                                 ])
+        
         model.compile(loss='sparse_categorical_crossentropy',
-                       optimizer='adam',
-                       metrics=['accuracy']
+                      optimizer=keras.optimizers.Adam(learning_rate=1e-4),
+                      metrics=['accuracy',
+                                keras.metrics.Precision(name='precision'),
+                                keras.metrics.Recall(name='recall'),
+                                keras.metrics.AUC(name='auc')
+                               ]
                        )
     
         self.model = model

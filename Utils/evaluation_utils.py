@@ -22,6 +22,8 @@ class Evaluation:
         and evaluation metrics (Accuracy, Precision, Recall, F1 score, AUC
         Specificity, False Positive Rate, and False Negative Rate)'''
         # find predicted class
+        if y_probs.ndim > 1 and y_probs.shape[1] == 2:
+            y_probs = y_probs[:, 1]
         y_pred_class = (y_probs > 0.5).astype(int)
 
         # get confusion matrix

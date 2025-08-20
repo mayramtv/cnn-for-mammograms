@@ -205,52 +205,52 @@ def image_preprocessing(image,
         return lbp_img
 
 
-        def resize(image, is_resnet_vgg=False, custom_cnn_size=256, resnet_vgg_size=224, is_lbp=False):
+    def resize(image, is_resnet_vgg=False, custom_cnn_size=256, resnet_vgg_size=224, is_lbp=False):
     
-            '''
-            Resize an image to fit a custom CNN, ResNet and VGG models
-            Parameters:
-                image: image to be resized
-                custom_cnn: Boolean stating if the size is for custom CNN
-                resnet_vgg: Boolean stating if the size is for ResNet/VGG models
-            '''
-        
-            # convert image to tensorflow image
-            img = tf.image.convert_image_dtype(image, tf.float32)
-        
-            # Adds  3rd channel
-            if img.ndim == 2:
-                img = tf.expand_dims(img, axis=-1)
-        
-            if is_lbp:
-                    method = "nearest"
-            else:
-                method = "bilinear"
+        '''
+        Resize an image to fit a custom CNN, ResNet and VGG models
+        Parameters:
+            image: image to be resized
+            custom_cnn: Boolean stating if the size is for custom CNN
+            resnet_vgg: Boolean stating if the size is for ResNet/VGG models
+        '''
+    
+        # convert image to tensorflow image
+        img = tf.image.convert_image_dtype(image, tf.float32)
+    
+        # Adds  3rd channel
+        if img.ndim == 2:
+            img = tf.expand_dims(img, axis=-1)
+    
+        if is_lbp:
+                method = "nearest"
+        else:
+            method = "bilinear"
+            
+        if is_resnet_vgg == False:
                 
-            if is_resnet_vgg == False:
-                    
-                # resize image and add pad to keep image proportions
-                # source https://www.tensorflow.org/api_docs/python/tf/image/resize_with_pad
-                resized_img = tf.image.resize_with_pad(img, custom_cnn_size, custom_cnn_size, method=method)
-        
-                # normalize image
-                # source https://www.tensorflow.org/api_docs/python/tf/clip_by_value
-                input_resized_img = tf.clip_by_value(resized_img, 0.0, 1.0)
-                
-            else:
-                # converts image to RGB for Resnet/VGG input
-                if img.shape[-1] == 1:
-                    img = tf.image.grayscale_to_rgb(img)
-                
-                # resize image and add pad to keep image proportions
-                # https://www.tensorflow.org/api_docs/python/tf/image/resize
-                resized_img = tf.image.resize_with_pad(img, resnet_vgg_size, resnet_vgg_size, method=method)
-        
-                # normalize image
-                # source https://www.tensorflow.org/api_docs/python/tf/keras/applications/resnet/preprocess_input
-                input_resized_img = tf.keras.applications.resnet50.preprocess_input(resized_img * 255.0)
-        
-            return input_resized_img
+            # resize image and add pad to keep image proportions
+            # source https://www.tensorflow.org/api_docs/python/tf/image/resize_with_pad
+            resized_img = tf.image.resize_with_pad(img, custom_cnn_size, custom_cnn_size, method=method)
+    
+            # normalize image
+            # source https://www.tensorflow.org/api_docs/python/tf/clip_by_value
+            input_resized_img = tf.clip_by_value(resized_img, 0.0, 1.0)
+            
+        else:
+            # converts image to RGB for Resnet/VGG input
+            if img.shape[-1] == 1:
+                img = tf.image.grayscale_to_rgb(img)
+            
+            # resize image and add pad to keep image proportions
+            # https://www.tensorflow.org/api_docs/python/tf/image/resize
+            resized_img = tf.image.resize_with_pad(img, resnet_vgg_size, resnet_vgg_size, method=method)
+    
+            # normalize image
+            # source https://www.tensorflow.org/api_docs/python/tf/keras/applications/resnet/preprocess_input
+            input_resized_img = tf.keras.applications.resnet50.preprocess_input(resized_img * 255.0)
+    
+        return input_resized_img
 
     img = image.copy()
     breast_mask = None
@@ -263,7 +263,7 @@ def image_preprocessing(image,
         img = crop(img, breast_mask)
 
     if preprocessing_techniques["apply_noise_reduction"] == True:
-        img = noise_reduction_WT(img)
+        img = noise_reduction(img)
 
     if preprocessing_techniques["apply_contrast_enhancement"] == True:
         img = contrast_enhancement(img)
@@ -336,10 +336,11 @@ def image_iterators(data_sets, is_resnet_vgg=False, preprocessing_techniques=Non
 
     # function contain only the image and other arguments are frozen 
     preprocessing_function = partial(image_preprocessing, 
-                       preprocessing_techniques,
-                       is_resnet_vgg=is_resnet_vgg,
-                       custom_cnn_size=size, 
-                       resnet_vgg_size=size)
+                                   preprocessing_techniques=preprocessing_techniques,
+                                   is_resnet_vgg=is_resnet_vgg,
+                                   custom_cnn_size=size, 
+                                   resnet_vgg_size=size
+                                    )
     
     # function for setup generators
     def data_generator(dataset, target_size=(256,256), shuffle=False, preprocessing_func=preprocessing_function):
@@ -364,7 +365,7 @@ def image_iterators(data_sets, is_resnet_vgg=False, preprocessing_techniques=Non
     # setup generators
     train_data, val_data, test_data = data_sets
     
-    train_gen = data_generator(data_sets, (size, size), True, preprocessing_func=preprocessing_function)
+    train_gen = data_generator(train_data, (size, size), True, preprocessing_func=preprocessing_function)
     val_gen = data_generator(val_data, (size, size), False, preprocessing_func=preprocessing_function)
     test_gen = data_generator(test_data, (size, size), False, preprocessing_func=preprocessing_function)
     

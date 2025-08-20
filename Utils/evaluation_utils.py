@@ -6,7 +6,7 @@ class Evaluation:
     def __init__(self, model):
         self.model = model
         self.metrics = {}
-        slef.labels = {}
+        self.labels = {}
 
     def evaluate(self, test_gen):
         '''Evaluate model and return metrics defined during model compile'''
@@ -22,7 +22,7 @@ class Evaluation:
         and evaluation metrics (Accuracy, Precision, Recall, F1 score, AUC
         Specificity, False Positive Rate, and False Negative Rate)'''
         # find predicted class
-        y_pred_class = (y_predics > 0.5).astype(int)
+        y_pred_class = (y_probs > 0.5).astype(int)
 
         # get confusion matrix
         tn, fp, fn, tp = confusion_matrix(y_true, y_pred_class).ravel()

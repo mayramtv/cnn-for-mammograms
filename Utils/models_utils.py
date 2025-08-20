@@ -38,6 +38,7 @@ class Basic_Custom_CNN:
                        )
     
         self.model = model
+        return self.model
     
     def train_model(self, train_gen, val_gen=None):
         '''Trains model'''
@@ -46,7 +47,8 @@ class Basic_Custom_CNN:
             raise ValueError("You need to initialize model using architecture() before training")
             
         # fit data to model
-        self.model.fit(train_gen, validation_data=val_gen, epochs=self.epochs)
+        history = self.model.fit(train_gen, validation_data=val_gen, epochs=self.epochs)
+        return history.history
         
     def get_model(self):
         '''Returns trained model'''
@@ -56,7 +58,7 @@ class Basic_Custom_CNN:
         '''Save model data'''
 
         # makes directory for outputs
-        os.makedir(models_directory, exist_ok=True)
+        os.makedirs(models_directory, exist_ok=True)
 
         # creates path and saves model
         path = os.path.join(models_directory, model_file)

@@ -149,6 +149,9 @@ class Visualization:
     
 
     def radar_chart(self, models_data, models_to_show, metrics):
+        '''
+        Plots all metrics for each model in one color and adds all models in one radar to compare models.
+        '''
         # number of metrics
         num_metrics = len(metrics)
         
@@ -185,6 +188,9 @@ class Visualization:
         plt.show()
 
     def ROC_curve(self, models_data, models_to_show):
+        '''
+        Plots the True Positive Rate(TPR) and False Positive Rate(FPR) at different thresholds 
+        '''
         for model in models_to_show:
             # calculate false positive rate and true positive rate using the ROC curve 
             fpr, tpr, _ = roc_curve(models_data[model]["labels"]["y_true"], models_data[model]["labels"]["y_probs"])

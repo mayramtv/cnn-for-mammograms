@@ -30,10 +30,10 @@ class Basic_Custom_CNN:
                                     layers.MaxPool2D(pool_size=2),
                             
                                     layers.Flatten(),
-                                    layers.Dense(2, activation='softmax')   
+                                    layers.Dense(1, activation='sigmoid')   
                                 ])
         
-        model.compile(loss='sparse_categorical_crossentropy',
+        model.compile(loss='binary_crossentropy',
                       optimizer=keras.optimizers.Adam(learning_rate=1e-4),
                       metrics=['accuracy',
                                 keras.metrics.Precision(name='precision'),

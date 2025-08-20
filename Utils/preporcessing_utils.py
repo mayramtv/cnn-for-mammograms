@@ -231,11 +231,11 @@ def image_preprocessing(image,
                 
             # resize image and add pad to keep image proportions
             # source https://www.tensorflow.org/api_docs/python/tf/image/resize_with_pad
-            resized_img = tf.image.resize_with_pad(img, custom_cnn_size, custom_cnn_size, method=method)
+            input_resized_img = tf.image.resize_with_pad(img, custom_cnn_size, custom_cnn_size, method=method)
     
-            # normalize image
-            # source https://www.tensorflow.org/api_docs/python/tf/clip_by_value
-            input_resized_img = tf.clip_by_value(resized_img, 0.0, 1.0)
+            # # normalize image
+            # # source https://www.tensorflow.org/api_docs/python/tf/clip_by_value
+            # input_resized_img = tf.clip_by_value(resized_img, 0.0, 1.0)
             
         else:
             # converts image to RGB for Resnet/VGG input
@@ -248,7 +248,7 @@ def image_preprocessing(image,
     
             # normalize image
             # source https://www.tensorflow.org/api_docs/python/tf/keras/applications/resnet/preprocess_input
-            input_resized_img = tf.keras.applications.resnet50.preprocess_input(resized_img * 255.0)
+            input_resized_img = tf.keras.applications.resnet50.preprocess_input(resized_img)
     
         return input_resized_img
 

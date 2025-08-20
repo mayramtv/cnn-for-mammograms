@@ -21,9 +21,12 @@ class Evaluation:
         '''Claculate confusion matrix (True Negative, False Positive, False Negative and True Positive) 
         and evaluation metrics (Accuracy, Precision, Recall, F1 score, AUC
         Specificity, False Positive Rate, and False Negative Rate)'''
-        # find predicted class
+        # make sure labels array is a 1D array and find predicted class
         if y_probs.ndim > 1 and y_probs.shape[1] == 2:
             y_probs = y_probs[:, 1]
+        elif y_probs.ndim > 1 and y_probs.shape[1] == 1:
+            y_probs=y_probs.flatten()
+            
         y_pred_class = (y_probs > 0.5).astype(int)
 
         # get confusion matrix

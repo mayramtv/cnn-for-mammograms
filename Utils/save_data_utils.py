@@ -14,7 +14,7 @@ class Save_Data:
         os.makedirs(out_directory, exist_ok=True)
 
         # open json file, if exist, to load existing output data
-        if os.path.exist(self.path):
+        if os.path.exists(self.path):
             with open(self.path, 'r') as file:
                 self.output_data = json.load(file)
         else:

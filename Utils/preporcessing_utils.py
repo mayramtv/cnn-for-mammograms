@@ -1,6 +1,9 @@
 import pandas as pd
 import numpy as np
+import cv2
+import pywt
 from functools import partial
+from skimage.restoration import estimate_sigma
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from skimage.feature import local_binary_pattern
@@ -24,18 +27,32 @@ def image_preprocessing(image,
         - custom_cnn_size is the size for the Custom CNN model input image to be resized
         - resnet_vgg_size is the size for the ResNet/VGG models input image to be resized"
     '''
+    def convert_uint8(img):
+        '''Convert image to intiger to work with cv2'''
+        if img.dtype != np.uint8:
+            img = cv2.normalize(img, None, 0, 255, cv2.NORM_MINMAX)
+            img = img.astype(np.uint8)
+        return img
 
     def background_removal(image):
         '''
             Removes edge of whole image, blur to find Otsu threshold, finds closed mask, 
             find the largest connected region and generate Otsu mask to remove background and leave only breast
         '''
+        
+        # normalize image and convert to UINT8 if needed
+        image = convert_uint8(img)
+        
         # resize to remove a contour of the whole image to remove some of the marks of x-rays that are not the breast
         height, width = image.shape[:2]
         image = image[45:height-45, 45:width-45]
     
         # smooth image
         blur_img = cv2.GaussianBlur(image, (5,5), 0)
+
+        # # normalize image to work with cv2.thereshold
+        # if blur_img.dtype != np.uint8:
+        #     blur_img = cv2.normalize(blur_img, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
     
         # gets Otsu threshold 
         _, thresh = cv2.threshold(blur_img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU) 
@@ -60,12 +77,18 @@ def image_preprocessing(image,
 
     def crop(image, breast_mask=None):    
         ''' Find contours of breast image using the mask.''' 
+        
+        # normalize image and convert to UINT8 if needed
+        image = convert_uint8(img)
+        if breast_mask is not None:
+            breast_mask = convert_uint8(breast_mask)
+        
         # - RETR_EXTERNAL: defines only external countour of the biggest section, 
         # - CHAIN_APPROX_SIMPLE: saves only non redundant and the simplest points of the countour 
         # source: https://medium.com/analytics-vidhya/opencv-findcontours-detailed-guide-692ee19eeb18
-        if breast_mask == None:
+        if breast_mask is None:
             contours, _ = cv2.findContours(image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        if breast_mask:
+        else:
             contours, _ = cv2.findContours(breast_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
         # checks for non-countour
@@ -93,6 +116,8 @@ def image_preprocessing(image,
            - calculating and applying soft thresholding value to coefficients 
            - and reconstructing image using coefficinets
         '''
+        # convert to float
+        image = img.astype(np.float32)
         
         # Calculate coefficients for the image using wavedec2 for 2D (image) decomposition 
         # using the  Daubechies wavelet db1 (Haar wavelet of interval of 0-1)  
@@ -125,21 +150,24 @@ def image_preprocessing(image,
         '''
         # code provenance 
         # https://docs.opencv.org/4.x/d5/daf/tutorial_py_histogram_equalization.html
+
+        # normalize image and convert to UINT8 if needed
+        image = convert_uint8(img)
     
         # verify the image is in gray scale
         if len(image.shape) == 3:  # If color image
             image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     
-        # verify image is intiger type 
-        if image.dtype != np.uint8:
-            image = cv2.normalize(image, None, 0, 255, cv2.NORM_MINMAX)
-            image = image.astype(np.uint8)
+        # # verify image is intiger type 
+        # if image.dtype != np.uint8:
+        #     image = cv2.normalize(image, None, 0, 255, cv2.NORM_MINMAX)
+        #     image = image.astype(np.uint8)
     
         # initialize CLAHE and apply to image
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
         clh_image = clahe.apply(image)
         
-        return clh_imag
+        return clh_image
 
     
     
@@ -192,6 +220,9 @@ def image_preprocessing(image,
             - number of points around center point
             - radius of kernel
         '''
+        # normalize image and convert to UINT8 if needed
+        image = convert_uint8(img)
+        
         # convert to gray scale
         if len(image.shape) == 3:
             image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -255,6 +286,12 @@ def image_preprocessing(image,
     img = image.copy()
     breast_mask = None
     is_lbp = False
+
+    # # verify image is intiger type 
+    # if img.dtype != np.uint8:
+    #     img = cv2.normalize(img, None, 0, 255, cv2.NORM_MINMAX)
+    #     img = img.astype(np.uint8)
+
     
     if preprocessing_techniques["apply_background_removal"] == True:
         _, _, breast_mask, img = background_removal(img)
@@ -357,8 +394,7 @@ def image_iterators(data_sets, is_resnet_vgg=False, preprocessing_techniques=Non
                                             color_mode="grayscale",
                                             class_mode="raw",
                                             batch_size=32,
-                                            shuffle=shuffle,
-                                            seed=42
+                                            shuffle=shuffle
                                             )
         return data_gen
 

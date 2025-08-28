@@ -19,9 +19,10 @@ class Basic_Custom_CNN:
         inputs = keras.Input(shape=self.input_shape)
         model = models.Sequential([
                                     inputs,
-                                    layers.Rescaling(1./255),                                           
-                                    layers.Conv2D(filters=32, kernel_size=3, activation='relu'),        # kernel size 3x3
-                                    layers.MaxPool2D(pool_size=2),                                      # pool size 2x2
+                                    layers.Rescaling(1./255), 
+            
+                                    layers.Conv2D(filters=32, kernel_size=3, activation='relu'),        
+                                    layers.MaxPool2D(pool_size=2),                                      
                             
                                     layers.Conv2D(filters=64, kernel_size=3, activation='relu'),
                                     layers.MaxPool2D(pool_size=2),
@@ -35,11 +36,7 @@ class Basic_Custom_CNN:
         
         model.compile(loss='binary_crossentropy',
                       optimizer=keras.optimizers.Adam(learning_rate=1e-4),
-                      metrics=['accuracy',
-                                keras.metrics.Precision(name='precision'),
-                                keras.metrics.Recall(name='recall'),
-                                keras.metrics.AUC(name='auc')
-                               ]
+                      metrics=['accuracy']
                        )
     
         self.model = model

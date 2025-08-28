@@ -1,8 +1,8 @@
 
 import numpy as np
 import os
-from sklearn.metrics import confusion_matrix, auc
 import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix, auc
 from skimage.metrics import peak_signal_noise_ratio as psnr
 from skimage.exposure import rescale_intensity
 
@@ -210,5 +210,61 @@ class Visualization:
         plt.legend(loc='lower right')
         plt.show()
 
-    def learning_curves(self, history):
-        pass
+    
+    def learning_curves(self, models_data, models_to_show, metrics, colors):
+        '''
+            Plot one or more model with one or more metrics from the model's history  
+            
+            Parameters:
+            - models data: a dictionary with each model and its respective data
+            - models_to_show: a list of the models confusion matrices needed to be displayed
+            - metrics: a list of the metrics.
+            - a list of colors of the same size of metrics
+        '''
+        # verify the number of colors matches the metrics length
+        if len(colors) != len(metrics):
+            raise ValueError("Your list of colors should match the size of the list of metrics")
+        
+    
+        # calculate num of columns and rows
+        num_vis = len(models_to_show)
+        if num_vis % 4 == 0:
+            cols = 4
+            rows = int(num_vis / cols)
+        else:
+            cols = 3
+            rows = int(np.ceil(num_vis / cols))
+    
+        
+        # set font size for plots
+        font = {'size': 8}
+        plt.rc('font', **font)
+        
+        # initiate subplots
+        fig, axs = plt.subplots(rows, cols, figsize=(cols * 3, rows * 4))
+        axs = np.atleast_1d(axs).flatten()
+        
+        # iterate models to display lerning curves
+        for i, model in enumerate(models_to_show):
+            # get model name
+            m_name = model.split(" - ")[2]
+            # plots each metric for each model 
+            for metric, c in zip(metrics, colors):
+                values = models_data[model]["history"][metric]
+                val_values = models_data[model]["history"]["val_" + metric]
+                axs[i].plot(range(1, len(values) + 1), values, color=c, label=metric)
+                axs[i].plot(range(1, len(val_values) + 1), val_values, color=c, linestyle='dashed', label="val_" + metric)
+            
+                # Add labels to the plot
+                axs[i].set_xlabel('Epochs')
+                axs[i].set_ylabel('Learning Performance')
+                axs[i].set_title(m_name)
+                axs[i].legend()
+    
+        # remove not used axes
+        for ax in range(num_vis, len(axs)):
+            fig.delaxes(axs[ax])
+        
+        # Show plot
+        plt.tight_layout()
+        plt.show()

@@ -13,7 +13,7 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 # Preprocessing techniques to try
 
-def image_preprocessing(image, 
+def image_preprocessing1(image, 
                        preprocessing_techniques,
                        is_resnet_vgg=False,
                        custom_cnn_size=256, 
@@ -377,7 +377,7 @@ def split_data(train, test, val_size, stratify_col="label"):
     return train_data, val_data, test_data
     
 
-def image_iterators(data_sets, is_resnet_vgg=False, preprocessing_techniques=None):
+def image_iterators1(data_sets, is_resnet_vgg=False, preprocessing_techniques=None):
     '''
         Generate a data generator for each dataset 
     '''
@@ -395,22 +395,14 @@ def image_iterators(data_sets, is_resnet_vgg=False, preprocessing_techniques=Non
                                     )
     
     # function for setup generators
-    def data_generator(dataset, target_size=None, shuffle=False, preprocessing_func=preprocessing_function):
+    def dataset_builder(dataset, shuffle=False):
         '''
-        Generate a data generator for processing each image
+        Generate dataset from preprocessed images
         '''
-        # initiate generators
-        gen = ImageDataGenerator(preprocessing_function=preprocessing_func)
-        data_gen = gen.flow_from_dataframe(
-                                            dataframe=dataset,
-                                            x_col="image_path",
-                                            y_col="label",
-                                            target_size=target_size,
-                                            color_mode="grayscale",
-                                            class_mode="raw",
-                                            batch_size=32,
-                                            shuffle=shuffle
-                                            )
+        # gets data
+        paths = dataset["image_path"].values
+        labels = dataset["label"].values.astype("float32")
+        
         return data_gen
 
     # setup generators

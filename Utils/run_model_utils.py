@@ -1,12 +1,12 @@
 from Utils.preporcessing1_utils import image_iterators1
-from Utils.preporcessing_utils import image_iterators
+# from Utils.preporcessing_utils import image_iterators
 from Utils.models_utils import Basic_Custom_CNN
 from Utils.evaluation_utils import Evaluation
 from Utils.save_data_utils import Save_Data
 
 from tensorflow.keras import backend as K
 
-def run_model(data_sets, techniques_groups, epochs=10, project_phase="P1", iteration=1):
+def run_model(data_sets, techniques_groups, epochs=10, project_phase="P1", change=""):
     # datasets
     train_data, val_data, test_data = data_sets
 
@@ -17,14 +17,14 @@ def run_model(data_sets, techniques_groups, epochs=10, project_phase="P1", itera
     for technique_name, techniques in techniques_groups.items():
         
         # create model name
-        model_name = "Custom CNN " + str(epochs) + " - " + "Basic " + str(iteration)+ " - " + technique_name
+        model_name = "Custom" + str(epochs) + " - " + technique_name + " - " + change
         print("Training " + model_name)
         
         # reset and clears variables before creating a new model 
         K.clear_session()
         
         # Create image iterators with preprocessing function for each set of preprocessing techniques 
-        train_generator, val_generator, test_generator = image_iterators((train_data, val_data, test_data), 
+        train_generator, val_generator, test_generator = image_iterators1((train_data, val_data, test_data), 
                                                         is_resnet_vgg=False,
                                                         preprocessing_techniques=techniques
                                                       )

@@ -402,17 +402,43 @@ def image_iterators1(data_sets, is_resnet_vgg=False, preprocessing_techniques=No
         # gets data
         paths = dataset["image_path"].values
         labels = dataset["label"].values.astype("float32")
+
+        # create dataset tensorflow Dataset
+        new_dataset = tf.data.Dataset.from_tensor_slices((paths, labels))
+
+        # shuffles data
+        if shuffle:
+            new_dataset = new_dataset.shuffle(buffer_size=len(dataset), seed=42)
         
-        return data_gen
+        # loads each image for preprocessing
+        def image_handling(path, label):
+            # loads original image
+            image = tf.io.read_file(path)
+            # make sure image is in gray scale
+            image = tf.image.decode_png(image, channels=1)
+            # normalize image for model
+            image = tf.image.convert_image_dtype(image, tf.float32)
+            # preprocess image using function
+            image = preprocessing_function(image)
+
+            return img, label
+
+        # map the image handling in the iterator
+        new_dataset = new_dataset.map(image_handling, num_parallel_calls=tf.data.AUTOTUNE)
+
+        # batches the dataset 
+        new_dataset = new_dataset.batch(32).prefetch(tf.data.AUTOTUNE)
+
+        return new_dataset       
 
     # setup generators
     train_data, val_data, test_data = data_sets
     
-    train_gen = data_generator(train_data, (size, size), True, preprocessing_func=preprocessing_function)
-    val_gen = data_generator(val_data, (size, size), False, preprocessing_func=preprocessing_function)
-    test_gen = data_generator(test_data, (size, size), False, preprocessing_func=preprocessing_function)
+    train_dset = dataset_builder(train_data, shuffle=True)
+    val_dset = dataset_builder(val_data, shuffle=False)
+    test_dset = dataset_builder(test_data, shuffle=False)
     
-    return train_gen, val_gen, test_gen
+    return train_dset, val_dset, test_dset
 
 def ablation(options):    
     '''

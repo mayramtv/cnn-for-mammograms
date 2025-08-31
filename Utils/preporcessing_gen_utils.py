@@ -13,7 +13,7 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 # Preprocessing techniques to try
 
-def image_preprocessing1(image, 
+def image_preprocessing(image, 
                        preprocessing_techniques,
                        is_resnet_vgg=False,
                        custom_cnn_size=256, 
@@ -49,10 +49,6 @@ def image_preprocessing1(image,
     
         # smooth image
         blur_img = cv2.GaussianBlur(image, (5,5), 0)
-
-        # # normalize image to work with cv2.thereshold
-        # if blur_img.dtype != np.uint8:
-        #     blur_img = cv2.normalize(blur_img, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
     
         # gets Otsu threshold 
         _, thresh = cv2.threshold(blur_img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU) 
@@ -139,6 +135,8 @@ def image_preprocessing1(image,
         # Reconstruct image using waverec2
         denoised_img = pywt.waverec2(new_coeffs, wavelet="db1")
         reconstructed = denoised_img[:image.shape[0], :image.shape[1]]
+
+        
         
         return reconstructed
 
@@ -291,47 +289,31 @@ def image_preprocessing1(image,
     # if img.dtype != np.uint8:
     #     img = cv2.normalize(img, None, 0, 255, cv2.NORM_MINMAX)
     #     img = img.astype(np.uint8)
-
-    print(img.min(), img.max(), img.mean(), img.shape, "original")
     
     if preprocessing_techniques["apply_background_removal"] == True:
         _, _, breast_mask, img = background_removal(img)
-        print(breast_mask.min(), breast_mask.max(), breast_mask.mean(), breast_mask.shape), "background b"
-        print(img.min(), img.max(), img.mean(), img.shape, "background i")
 
     if preprocessing_techniques["apply_crop"] == True:
         img = crop(img, breast_mask)
-        print(img.min(), img.max(), img.mean(), img.shape, "crop")
 
     if preprocessing_techniques["apply_noise_reduction"] == True:
         img = noise_reduction(img)
-        print(img.min(), img.max(), img.mean(), img.shape, "noise")
 
     if preprocessing_techniques["apply_contrast_enhancement"] == True:
         img = contrast_enhancement(img)
-        print(img.min(), img.max(), img.mean(), img.shape, "contrast")
 
     if preprocessing_techniques["apply_edge_enhancement"] == True:
         img = edge_enhancement(img, img)
-        print(img.min(), img.max(), img.mean(), img.shape, "edge_enh")
 
     if preprocessing_techniques["apply_lbp_texturizer"] == True:
         img = lbp_texturizer(img)
         is_lbp=True
-        print(img.min(), img.max(), img.mean(), img.shape, "lbp")
 
     img = resize(img, 
                  is_resnet_vgg=is_resnet_vgg, 
                  custom_cnn_size=custom_cnn_size, 
                  resnet_vgg_size=resnet_vgg_size, 
                  is_lbp=is_lbp)
-
-    print(
-    tf.reduce_min(img).numpy(),
-    tf.reduce_max(img).numpy(),
-    tf.reduce_mean(img).numpy(),
-    img.shape, "resize"
-)
 
     return img
     
@@ -377,7 +359,7 @@ def split_data(train, test, val_size, stratify_col="label"):
     return train_data, val_data, test_data
     
 
-def image_iterators1(data_sets, is_resnet_vgg=False, preprocessing_techniques=None):
+def image_iterators(data_sets, is_resnet_vgg=False, preprocessing_techniques=None):
     '''
         Generate a data generator for each dataset 
     '''
@@ -395,50 +377,32 @@ def image_iterators1(data_sets, is_resnet_vgg=False, preprocessing_techniques=No
                                     )
     
     # function for setup generators
-    def dataset_builder(dataset, shuffle=False):
+    def data_generator(dataset, target_size=None, shuffle=False, preprocessing_func=preprocessing_function):
         '''
-        Generate dataset from preprocessed images
+        Generate a data generator for processing each image
         '''
-        # gets data
-        paths = dataset["image_path"].values
-        labels = dataset["label"].values.astype("float32")
-
-        # create dataset tensorflow Dataset
-        new_dataset = tf.data.Dataset.from_tensor_slices((paths, labels))
-
-        # shuffles data
-        if shuffle:
-            new_dataset = new_dataset.shuffle(buffer_size=len(dataset), seed=42)
-        
-        # loads each image for preprocessing
-        def image_handling(path, label):
-            # loads original image
-            image = tf.io.read_file(path)
-            # make sure image is in gray scale
-            image = tf.image.decode_png(image, channels=1)
-            # normalize image for model
-            image = tf.image.convert_image_dtype(image, tf.float32)
-            # preprocess image using function
-            image = preprocessing_function(image)
-
-            return img, label
-
-        # map the image handling in the iterator
-        new_dataset = new_dataset.map(image_handling, num_parallel_calls=tf.data.AUTOTUNE)
-
-        # batches the dataset 
-        new_dataset = new_dataset.batch(32).prefetch(tf.data.AUTOTUNE)
-
-        return new_dataset       
+        # initiate generators
+        gen = ImageDataGenerator(preprocessing_function=preprocessing_func)
+        data_gen = gen.flow_from_dataframe(
+                                            dataframe=dataset,
+                                            x_col="image_path",
+                                            y_col="label",
+                                            target_size=target_size,
+                                            color_mode="grayscale",
+                                            class_mode="raw",
+                                            batch_size=32,
+                                            shuffle=shuffle
+                                            )
+        return data_gen
 
     # setup generators
     train_data, val_data, test_data = data_sets
     
-    train_dset = dataset_builder(train_data, shuffle=True)
-    val_dset = dataset_builder(val_data, shuffle=False)
-    test_dset = dataset_builder(test_data, shuffle=False)
+    train_gen = data_generator(train_data, (size, size), True, preprocessing_func=preprocessing_function)
+    val_gen = data_generator(val_data, (size, size), False, preprocessing_func=preprocessing_function)
+    test_gen = data_generator(test_data, (size, size), False, preprocessing_func=preprocessing_function)
     
-    return train_dset, val_dset, test_dset
+    return train_gen, val_gen, test_gen
 
 def ablation(options):    
     '''

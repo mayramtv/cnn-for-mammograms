@@ -19,12 +19,12 @@ class Visualization:
             with open(self.path, 'r') as file:
                 self.models_data = json.load(file)
         else:
-            print("No models are saved")
+            print("The model does not exist. Please check the name")
             
     @staticmethod
     def vis_plots(data):
         '''Plots one or more images or x-rays. Parameters:
-            -data: a dictionary with the names as keys and image as values.
+            - data: a dictionary with the names as keys and image as values.
         '''
     
         # calculate num of columns and rows

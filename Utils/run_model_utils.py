@@ -1,5 +1,5 @@
-from Utils.preporcessing1_utils import image_iterators1
-# from Utils.preporcessing_utils import image_iterators
+from Utils.preporcessing_gen_utils import image_iterators  # comment this line to try model with tf.Dataset generator(next line)
+# from Utils.preporcessing_utils import image_iterators    # comment this line to try model with tf.ImageDataGenerator generator(previus line)
 from Utils.models_utils import Basic_Custom_CNN
 from Utils.evaluation_utils import Evaluation
 from Utils.save_data_utils import Save_Data
@@ -11,7 +11,7 @@ def run_model(data_sets, techniques_groups, epochs=10, project_phase="P1", chang
     train_data, val_data, test_data = data_sets
 
     # y_labels
-    y_true = test_data["label"][:10]
+    y_true = test_data["label"]
     
     # iterate trough techniques groups for training a model with each group
     for technique_name, techniques in techniques_groups.items():
@@ -19,12 +19,15 @@ def run_model(data_sets, techniques_groups, epochs=10, project_phase="P1", chang
         # create model name
         model_name = "Custom" + str(epochs) + " - " + technique_name + " - " + change
         print("Training " + model_name)
+
+        # create files name
+        name = model_name.lower().replace(" ", "_") 
         
         # reset and clears variables before creating a new model 
         K.clear_session()
         
         # Create image iterators with preprocessing function for each set of preprocessing techniques 
-        train_generator, val_generator, test_generator = image_iterators1((train_data, val_data, test_data), 
+        train_generator, val_generator, test_generator = image_iterators((train_data, val_data, test_data), 
                                                         is_resnet_vgg=False,
                                                         preprocessing_techniques=techniques
                                                       )
@@ -42,9 +45,9 @@ def run_model(data_sets, techniques_groups, epochs=10, project_phase="P1", chang
                                              val_gen=val_generator)
         
         # save model and get path
-        name = model_name.lower().replace(" ", "_") + ".keras"
+        keras_name = name + ".keras"
         model_path = model_instance.save_model(models_directory="Models", 
-                                               model_file=name)
+                                               model_file=keras_name)
     
         # evaluate model by making predictions
         evaluation = Evaluation(model_instance.get_model())
@@ -57,7 +60,8 @@ def run_model(data_sets, techniques_groups, epochs=10, project_phase="P1", chang
         y_labels = evaluation.get_labels()
     
         # save data
-        save_data = Save_Data(file_name="models_data.json", out_directory="Outputs")
+        json_name = name + ".json"
+        save_data = Save_Data(file_name=json_name, out_directory="Outputs")
         save_data.add_model_data(model_name, 
                                  model_path, 
                                  epochs, 

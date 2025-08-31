@@ -8,7 +8,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from skimage.feature import local_binary_pattern
 import tensorflow as tf
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
+# from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 
 # Preprocessing techniques to try
@@ -49,10 +49,6 @@ def image_preprocessing(image,
     
         # smooth image
         blur_img = cv2.GaussianBlur(image, (5,5), 0)
-
-        # # normalize image to work with cv2.thereshold
-        # if blur_img.dtype != np.uint8:
-        #     blur_img = cv2.normalize(blur_img, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
     
         # gets Otsu threshold 
         _, thresh = cv2.threshold(blur_img, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU) 
@@ -139,6 +135,10 @@ def image_preprocessing(image,
         # Reconstruct image using waverec2
         denoised_img = pywt.waverec2(new_coeffs, wavelet="db1")
         reconstructed = denoised_img[:image.shape[0], :image.shape[1]]
+
+        # solve negative value
+        reconstructed = reconstructed.astype(np.float32)
+        reconstructed = np.clip(reconstructed, 0, None) 
         
         return reconstructed
 
@@ -157,11 +157,6 @@ def image_preprocessing(image,
         # verify the image is in gray scale
         if len(image.shape) == 3:  # If color image
             image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    
-        # # verify image is intiger type 
-        # if image.dtype != np.uint8:
-        #     image = cv2.normalize(image, None, 0, 255, cv2.NORM_MINMAX)
-        #     image = image.astype(np.uint8)
     
         # initialize CLAHE and apply to image
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
@@ -235,9 +230,7 @@ def image_preprocessing(image,
     
         return lbp_img
 
-
-    def resize(image, is_resnet_vgg=False, custom_cnn_size=256, resnet_vgg_size=224, is_lbp=False):
-    
+    def resize(img, is_resnet_vgg=False, custom_cnn_size=256, resnet_vgg_size=224, is_lbp=False):
         '''
         Resize an image to fit a custom CNN, ResNet and VGG models
         Parameters:
@@ -245,80 +238,106 @@ def image_preprocessing(image,
             custom_cnn: Boolean stating if the size is for custom CNN
             resnet_vgg: Boolean stating if the size is for ResNet/VGG models
         '''
-    
-        # convert image to tensorflow image
-        img = tf.image.convert_image_dtype(image, tf.float32)
-    
-        # Adds  3rd channel
-        if img.ndim == 2:
-            img = tf.expand_dims(img, axis=-1)
-    
-        if is_lbp:
-                method = "nearest"
+
+        if is_resnet_vgg:
+            target_size = resnet_vgg_size
         else:
-            method = "bilinear"
-            
+            target_size = custom_cnn_size
+        
+        height, width = img.shape[:2]
+    
+        # calculate ration of image sides
+        ratio = float(target_size) / max(height, width)
+        new_width = int(width * ratio)
+        new_height = int(height * ratio)
+    
+        # resize image based on new ration
+        resized_img = cv2.resize(img, (new_width, new_height), interpolation=cv2.INTER_AREA)
+    
+        # calculate the amount of padding to be added in each side
+        width_pad = target_size - new_width
+        height_pad = target_size - new_height
+        top, bottom = height_pad // 2, height_pad - (height_pad // 2)
+        left, right = width_pad // 2, width_pad - (width_pad // 2)
+    
+        # add zero padding
+        input_resized_img = cv2.copyMakeBorder(resized_img, top, bottom, left, right,
+                                        cv2.BORDER_CONSTANT, value=[0, 0, 0])
+
         if is_resnet_vgg == False:
-                
-            # resize image and add pad to keep image proportions
-            # source https://www.tensorflow.org/api_docs/python/tf/image/resize_with_pad
-            input_resized_img = tf.image.resize_with_pad(img, custom_cnn_size, custom_cnn_size, method=method)
-    
-            # # normalize image
-            # # source https://www.tensorflow.org/api_docs/python/tf/clip_by_value
-            # input_resized_img = tf.clip_by_value(resized_img, 0.0, 1.0)
+            input_resized_img = np.expand_dims(input_resized_img, axis=-1)
             
-        else:
-            # converts image to RGB for Resnet/VGG input
-            if img.shape[-1] == 1:
-                img = tf.image.grayscale_to_rgb(img)
-            
-            # resize image and add pad to keep image proportions
-            # https://www.tensorflow.org/api_docs/python/tf/image/resize
-            resized_img = tf.image.resize_with_pad(img, resnet_vgg_size, resnet_vgg_size, method=method)
-    
-            # normalize image
-            # source https://www.tensorflow.org/api_docs/python/tf/keras/applications/resnet/preprocess_input
-            input_resized_img = tf.keras.applications.resnet50.preprocess_input(resized_img)
-    
         return input_resized_img
 
-    img = image.copy()
+
+    # def resize(image, is_resnet_vgg=False, custom_cnn_size=256, resnet_vgg_size=224, is_lbp=False):
+    
+    #     '''
+    #     Resize an image to fit a custom CNN, ResNet and VGG models
+    #     Parameters:
+    #         image: image to be resized
+    #         custom_cnn: Boolean stating if the size is for custom CNN
+    #         resnet_vgg: Boolean stating if the size is for ResNet/VGG models
+    #     '''
+    
+    #     # convert image to tensorflow image
+    #     img = tf.convert_to_tensor(image)
+    #     img = tf.image.convert_image_dtype(img, tf.float32)
+    
+    #     # Adds  3rd channel
+    #     if img.ndim == 2:
+    #         img = tf.expand_dims(img, axis=-1)
+    
+    #     if is_lbp:
+    #             method = "nearest"
+    #     else:
+    #         method = "bilinear"
+            
+    #     if is_resnet_vgg == False:
+                
+    #         # resize image and add pad to keep image proportions
+    #         # source https://www.tensorflow.org/api_docs/python/tf/image/resize_with_pad
+    #         input_resized_img = tf.image.resize_with_pad(img, custom_cnn_size, custom_cnn_size, method=method)
+            
+    #     else:
+    #         # converts image to RGB for Resnet/VGG input
+    #         if img.shape[-1] == 1:
+    #             img = tf.image.grayscale_to_rgb(img)
+            
+    #         # resize image and add pad to keep image proportions
+    #         # https://www.tensorflow.org/api_docs/python/tf/image/resize
+    #         resized_img = tf.image.resize_with_pad(img, resnet_vgg_size, resnet_vgg_size, method=method)
+    
+    #         # normalize image
+    #         # source https://www.tensorflow.org/api_docs/python/tf/keras/applications/resnet/preprocess_input
+    #         input_resized_img = tf.keras.applications.resnet50.preprocess_input(resized_img)
+    
+    #     return input_resized_img
+
+    img = image
     breast_mask = None
     is_lbp = False
 
-    # # verify image is intiger type 
-    # if img.dtype != np.uint8:
-    #     img = cv2.normalize(img, None, 0, 255, cv2.NORM_MINMAX)
-    #     img = img.astype(np.uint8)
-
-    print(img.min(), img.max(), img.mean(), img.shape, "original")
+    # print(img.min(), img.max(), img.mean(), img.shape, "original")
     
     if preprocessing_techniques["apply_background_removal"] == True:
         _, _, breast_mask, img = background_removal(img)
-        print(breast_mask.min(), breast_mask.max(), breast_mask.mean(), breast_mask.shape), "background b"
-        print(img.min(), img.max(), img.mean(), img.shape, "background i")
 
     if preprocessing_techniques["apply_crop"] == True:
         img = crop(img, breast_mask)
-        print(img.min(), img.max(), img.mean(), img.shape, "crop")
 
     if preprocessing_techniques["apply_noise_reduction"] == True:
         img = noise_reduction(img)
-        print(img.min(), img.max(), img.mean(), img.shape, "noise")
 
     if preprocessing_techniques["apply_contrast_enhancement"] == True:
         img = contrast_enhancement(img)
-        print(img.min(), img.max(), img.mean(), img.shape, "contrast")
 
     if preprocessing_techniques["apply_edge_enhancement"] == True:
         img = edge_enhancement(img, img)
-        print(img.min(), img.max(), img.mean(), img.shape, "edge_enh")
 
     if preprocessing_techniques["apply_lbp_texturizer"] == True:
         img = lbp_texturizer(img)
         is_lbp=True
-        print(img.min(), img.max(), img.mean(), img.shape, "lbp")
 
     img = resize(img, 
                  is_resnet_vgg=is_resnet_vgg, 
@@ -326,12 +345,12 @@ def image_preprocessing(image,
                  resnet_vgg_size=resnet_vgg_size, 
                  is_lbp=is_lbp)
 
-    print(
-    tf.reduce_min(img).numpy(),
-    tf.reduce_max(img).numpy(),
-    tf.reduce_mean(img).numpy(),
-    img.shape, "resize"
-)
+#     print(
+#     tf.reduce_min(img).numpy(),
+#     tf.reduce_max(img).numpy(),
+#     tf.reduce_mean(img).numpy(),
+#     img.shape, "resize"
+# )
 
     return img
     
@@ -395,32 +414,54 @@ def image_iterators(data_sets, is_resnet_vgg=False, preprocessing_techniques=Non
                                     )
     
     # function for setup generators
-    def data_generator(dataset, target_size=None, shuffle=False, preprocessing_func=preprocessing_function):
+    def dataset_builder(dataset, shuffle=False):
         '''
-        Generate a data generator for processing each image
+        Generate dataset from preprocessed images
         '''
-        # initiate generators
-        gen = ImageDataGenerator(preprocessing_function=preprocessing_func)
-        data_gen = gen.flow_from_dataframe(
-                                            dataframe=dataset,
-                                            x_col="image_path",
-                                            y_col="label",
-                                            target_size=target_size,
-                                            color_mode="grayscale",
-                                            class_mode="raw",
-                                            batch_size=32,
-                                            shuffle=shuffle
-                                            )
-        return data_gen
+        # gets data
+        paths = dataset["image_path"].values
+        labels = dataset["label"].values.astype("float32")
+
+        # create dataset tensorflow Dataset
+        new_dataset = tf.data.Dataset.from_tensor_slices((paths, labels))
+
+        # shuffles data
+        if shuffle:
+            new_dataset = new_dataset.shuffle(buffer_size=len(dataset), seed=42)
+        
+        # loads each image for preprocessing
+        def image_handling(path, label):
+            # loads original image
+            image = tf.io.read_file(path)
+            # make sure image is in gray scale
+            image = tf.image.decode_png(image, channels=1)
+            # normalize image for model
+            image = tf.image.convert_image_dtype(image, tf.float32)
+
+            # preprocess image and modify current numpy arrays to work with tf
+            image = tf.numpy_function(preprocessing_function, [image], tf.float32)
+
+            # Restore shape 
+            image.set_shape([size, size, 1])
+
+            return image, label
+
+        # map the image handling in the iterator
+        new_dataset = new_dataset.map(image_handling, num_parallel_calls=tf.data.AUTOTUNE)
+
+        # batches the dataset 
+        new_dataset = new_dataset.batch(32).prefetch(tf.data.AUTOTUNE)
+
+        return new_dataset       
 
     # setup generators
     train_data, val_data, test_data = data_sets
     
-    train_gen = data_generator(train_data, (size, size), True, preprocessing_func=preprocessing_function)
-    val_gen = data_generator(val_data, (size, size), False, preprocessing_func=preprocessing_function)
-    test_gen = data_generator(test_data, (size, size), False, preprocessing_func=preprocessing_function)
+    train_dset = dataset_builder(train_data, shuffle=True)
+    val_dset = dataset_builder(val_data, shuffle=False)
+    test_dset = dataset_builder(test_data, shuffle=False)
     
-    return train_gen, val_gen, test_gen
+    return train_dset, val_dset, test_dset
 
 def ablation(options):    
     '''

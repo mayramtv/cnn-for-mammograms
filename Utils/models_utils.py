@@ -8,7 +8,7 @@ class Basic_Custom_CNN:
     '''
     Basic custom model architecture. Setups, runs and saves model
     '''
-    def __init__(self, input_shape=(256, 256, 1), num_classes=2, epochs=10):
+    def __init__(self, input_shape=(256, 256, 1), num_classes=1, epochs=10):
         self.input_shape = input_shape
         self.classes = num_classes
         self.epochs = epochs
@@ -16,9 +16,8 @@ class Basic_Custom_CNN:
     
     def architecture(self):
         '''Sets up model architecture for custom CNN'''
-        inputs = keras.Input(shape=self.input_shape)
         model = models.Sequential([
-                                    inputs,
+                                    layers.InputLayer(input_shape=self.input_shape),
                                     layers.Rescaling(1./255), 
             
                                     layers.Conv2D(filters=32, kernel_size=3, activation='relu'),        
@@ -67,6 +66,7 @@ class Basic_Custom_CNN:
         self.model.save(path)
 
         return path
+
 
 
 class VGG_CNN:

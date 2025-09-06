@@ -231,47 +231,50 @@ def image_preprocessing(image,
         return lbp_img
 
     def resize(img, is_resnet_vgg=False, custom_cnn_size=256, resnet_vgg_size=224, is_lbp=False):
-        '''
-        Resize an image to fit a custom CNN, ResNet and VGG models
-        Parameters:
-            image: image to be resized
-            custom_cnn: Boolean stating if the size is for custom CNN
-            resnet_vgg: Boolean stating if the size is for ResNet/VGG models
-        '''
+        """
+        Resize an image to fit a custom CNN, ResNet, or VGG model using TensorFlow ops.
+        Maintains aspect ratio, pads with zeros, and expands channels if needed.
+        """
+    
+        # target size
+        target_size = resnet_vgg_size if is_resnet_vgg else custom_cnn_size
+    
+        # get current shape
+        shape = tf.shape(img)
+        height, width = shape[0], shape[1]
 
-        if is_resnet_vgg:
-            target_size = resnet_vgg_size
-        else:
-            target_size = custom_cnn_size
-        
-        height, width = img.shape[:2]
+        # make sure there is not division by zero
+        max_dim = tf.maximum(tf.maximum(height, width), 1) 
     
-        # calculate ration of image sides
-        ratio = float(target_size) / max(height, width)
-        new_width = int(width * ratio)
-        new_height = int(height * ratio)
+        # compute resize ratio
+        ratio = tf.cast(target_size, tf.float32) / tf.cast(tf.maximum(height, width), tf.float32)
+        new_height = tf.cast(tf.round(tf.cast(height, tf.float32) * ratio), tf.int32)
+        new_width = tf.cast(tf.round(tf.cast(width, tf.float32) * ratio), tf.int32)
     
-        # resize image based on new ration
-        resized_img = cv2.resize(img, (new_width, new_height), interpolation=cv2.INTER_AREA)
+        # resize with bilinear interpolation (similar to cv2.INTER_AREA)
+        resized = tf.image.resize(img, [new_height, new_width], method="bilinear")
     
-        # calculate the amount of padding to be added in each side
-        width_pad = target_size - new_width
-        height_pad = target_size - new_height
-        top, bottom = height_pad // 2, height_pad - (height_pad // 2)
-        left, right = width_pad // 2, width_pad - (width_pad // 2)
+        # pad to target_size × target_size
+        pad_height = tf.maximum(target_size - new_height, 0)
+        pad_width = tf.maximum(target_size - new_width, 0)
+        top = pad_height // 2
+        bottom = pad_height - top
+        left = pad_width // 2
+        right = pad_width - left
     
-        # add zero padding
-        input_resized_img = cv2.copyMakeBorder(resized_img, top, bottom, left, right,
-                                        cv2.BORDER_CONSTANT, value=[0, 0, 0])
+        padded = tf.pad(resized, [[top, bottom], [left, right], [0, 0]], constant_values=0.0)
+    
+        # make sure shape is correct
+        padded = tf.image.resize_with_crop_or_pad(padded, target_size, target_size)
+    
+        # if custom CNN expects grayscale channel
+        if not is_resnet_vgg and not is_lbp and len(padded.shape) == 2:
+            padded = tf.expand_dims(padded, axis=-1)
+    
+        return padded
 
-        if is_resnet_vgg == False:
-            input_resized_img = np.expand_dims(input_resized_img, axis=-1)
-            
-        return input_resized_img
 
-
-    # def resize(image, is_resnet_vgg=False, custom_cnn_size=256, resnet_vgg_size=224, is_lbp=False):
-    
+    # def resize(img, is_resnet_vgg=False, custom_cnn_size=256, resnet_vgg_size=224, is_lbp=False):
     #     '''
     #     Resize an image to fit a custom CNN, ResNet and VGG models
     #     Parameters:
@@ -279,46 +282,44 @@ def image_preprocessing(image,
     #         custom_cnn: Boolean stating if the size is for custom CNN
     #         resnet_vgg: Boolean stating if the size is for ResNet/VGG models
     #     '''
-    
-    #     # convert image to tensorflow image
-    #     img = tf.convert_to_tensor(image)
-    #     img = tf.image.convert_image_dtype(img, tf.float32)
-    
-    #     # Adds  3rd channel
-    #     if img.ndim == 2:
-    #         img = tf.expand_dims(img, axis=-1)
-    
-    #     if is_lbp:
-    #             method = "nearest"
+
+    #     if is_resnet_vgg:
+    #         target_size = resnet_vgg_size
     #     else:
-    #         method = "bilinear"
-            
+    #         target_size = custom_cnn_size
+        
+    #     height, width = img.shape[:2]
+    
+    #     # calculate ration of image sides
+    #     ratio = float(target_size) / max(height, width)
+    #     new_width = int(width * ratio)
+    #     new_height = int(height * ratio)
+    
+    #     # resize image based on new ration
+    #     resized_img = cv2.resize(img, (new_width, new_height), interpolation=cv2.INTER_AREA)
+    
+    #     # calculate the amount of padding to be added in each side
+    #     width_pad = np.max(target_size - new_width)
+    #     height_pad = np.max(target_size - new_height)
+    #     top, bottom = height_pad // 2, height_pad - (height_pad // 2)
+    #     left, right = width_pad // 2, width_pad - (width_pad // 2)
+    
+    #     # add zero padding
+    #     input_resized_img = cv2.copyMakeBorder(resized_img, top, bottom, left, right,
+    #                                     cv2.BORDER_CONSTANT, value=[0, 0, 0])
+
     #     if is_resnet_vgg == False:
-                
-    #         # resize image and add pad to keep image proportions
-    #         # source https://www.tensorflow.org/api_docs/python/tf/image/resize_with_pad
-    #         input_resized_img = tf.image.resize_with_pad(img, custom_cnn_size, custom_cnn_size, method=method)
+    #         input_resized_img = np.expand_dims(input_resized_img, axis=-1)
             
-    #     else:
-    #         # converts image to RGB for Resnet/VGG input
-    #         if img.shape[-1] == 1:
-    #             img = tf.image.grayscale_to_rgb(img)
-            
-    #         # resize image and add pad to keep image proportions
-    #         # https://www.tensorflow.org/api_docs/python/tf/image/resize
-    #         resized_img = tf.image.resize_with_pad(img, resnet_vgg_size, resnet_vgg_size, method=method)
-    
-    #         # normalize image
-    #         # source https://www.tensorflow.org/api_docs/python/tf/keras/applications/resnet/preprocess_input
-    #         input_resized_img = tf.keras.applications.resnet50.preprocess_input(resized_img)
-    
     #     return input_resized_img
 
     img = image
     breast_mask = None
     is_lbp = False
-
-    # print(img.min(), img.max(), img.mean(), img.shape, "original")
+    
+    if not is_resnet_vgg and not is_lbp or len(img.shape) == 2:
+            img = tf.expand_dims(img, axis=-1)
+    
     
     if preprocessing_techniques["apply_background_removal"] == True:
         _, _, breast_mask, img = background_removal(img)
@@ -344,13 +345,25 @@ def image_preprocessing(image,
                  custom_cnn_size=custom_cnn_size, 
                  resnet_vgg_size=resnet_vgg_size, 
                  is_lbp=is_lbp)
+    # check for correct size
+    if is_resnet_vgg:
+        corr_size = resnet_vgg_size
+        chan = 3
+    else:
+        corr_size = custom_cnn_size
+        chan = 1
 
-#     print(
-#     tf.reduce_min(img).numpy(),
-#     tf.reduce_max(img).numpy(),
-#     tf.reduce_mean(img).numpy(),
-#     img.shape, "resize"
-# )
+    assert img.shape[:2] == (corr_size, corr_size), f"Incorrect shape {img.shape}, expected ({corr_size}, {corr_size}, {chan})"
+        
+    
+    # convert image to tensorflow image
+    img = tf.convert_to_tensor(img, dtype=tf.float32)
+
+    # tf.print("DEBUG:",
+    #          "shape =", tf.shape(img),
+    #          "dtype =", img.dtype,
+    #          "min =", tf.reduce_min(img),
+    #          "max =", tf.reduce_max(img))
 
     return img
     
@@ -430,7 +443,7 @@ def image_iterators(data_sets, is_resnet_vgg=False, preprocessing_techniques=Non
             new_dataset = new_dataset.shuffle(buffer_size=len(dataset), seed=42)
         
         # loads each image for preprocessing
-        def image_handling(path, label):
+        def image_handling(path, label, preprocessing_function, size):
             # loads original image
             image = tf.io.read_file(path)
             # make sure image is in gray scale
@@ -446,8 +459,13 @@ def image_iterators(data_sets, is_resnet_vgg=False, preprocessing_techniques=Non
 
             return image, label
 
+        # binds variables
+        image_handling_func = partial(image_handling,
+                                preprocessing_function=preprocessing_function,
+                                size=size)
+
         # map the image handling in the iterator
-        new_dataset = new_dataset.map(image_handling, num_parallel_calls=tf.data.AUTOTUNE)
+        new_dataset = new_dataset.map(image_handling_func, num_parallel_calls=tf.data.AUTOTUNE)
 
         # batches the dataset 
         new_dataset = new_dataset.batch(32).prefetch(tf.data.AUTOTUNE)

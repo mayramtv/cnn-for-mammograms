@@ -454,7 +454,7 @@ def dataset_builder(dataset,
     labels = dataset["label"].values
 
     # create images directory path
-    parent_dir = "/Preprocessed_Images/"
+    parent_dir = "Preprocessed_Images/"
     im_dir_name = "custom_" + preprocessing_techniques_name.lower().replace(" ", "_")
     im_dir = os.path.join(parent_dir, im_dir_name)
 

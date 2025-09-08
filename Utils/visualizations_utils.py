@@ -1,25 +1,23 @@
 
 import numpy as np
 import os
+from pathlib import Path
+import glob
+import json
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, auc
+from sklearn.metrics import ConfusionMatrixDisplay
+from sklearn.metrics import confusion_matrix, auc, roc_curve
 from skimage.metrics import peak_signal_noise_ratio as psnr
 from skimage.exposure import rescale_intensity
 
+
 # Models visualization 
 class Visualization:
-    def __init__(self, file_name="models_data.json", out_directory="Outputs"):
-        self.out_directory = out_directory
-        self.file_name = file_name
-        self.path = os.path.join(self.out_directory, self.file_name)
-        self.models_data = None
+    def __init__(self, out_directory="Outputs", str_filter=None):
+        self.out_directory = Path(out_directory)
+        self.str_filter = str_filter
+        self.models_data = {}
 
-        # open json file to load existing output data
-        if os.path.exist(self.path):
-            with open(self.path, 'r') as file:
-                self.models_data = json.load(file)
-        else:
-            print("The model does not exist. Please check the name")
             
     @staticmethod
     def vis_plots(data):
@@ -74,6 +72,31 @@ class Visualization:
     
         return diff_rescaled
 
+    def load_files(self):
+        '''Get files in outputs and find only requsted files based on filter'''
+        
+        # get files in output directory
+        json_files = list(self.out_directory.glob("*.json"))
+    
+        # filter files based on string
+        if self.str_filter is not None:
+            json_files = [file for file in json_files if self.str_filter in file.name]
+    
+        # gets data and saves it in a  dictionary
+        for file in json_files:
+            # retrieve file data 
+            with open(file, 'r') as f:
+                file_data = json.load(f)
+    
+            # gets model name from file
+            model_name = list(file_data.keys())[0]
+    
+            # gets data from file and saves it in dictionary
+            self.models_data[model_name] = file_data[model_name]
+
+        return self.models_data
+            
+
     def confusion_matrices(self, models_data, models_to_show, classes=None):
         '''
         Plot one or more confusion matrices 
@@ -83,34 +106,38 @@ class Visualization:
         - models_to_show: a list of the models confusion matrices needed to be displayed
         - classes: a list of the classes ('Benigant', 'Malignant')
         '''
+        # set font size for plots
+        font = {'size': 9}
+        plt.rc('font', **font)
+        
         if len(models_to_show) == 1:
             # gets model's data
             model_name = models_to_show[0]
             cm_data = models_data[model_name]["metrics"]["confusion_matrix"]
+            cm_data = np.array(cm_data)
             # creates display for confusion matrix 
             # code inspiration from 
             # https://medium.com/@eceisikpolat/plot-and-customize-multiple-confusion-matrices-with-matplotlib-a19ed00ca16c
             disp = ConfusionMatrixDisplay(confusion_matrix=cm_data, display_labels=classes)
             disp.plot(cmap=plt.cm.Blues)
-            plt.title(f"Confusion Matrix: {model_name}")
+            m_name = model_name.split("-")[1]
+            plt.title(m_name)
             plt.show()
         else:
             num_models = len(models_to_show)
-            if num_models % 2 == 0:
-                cols = 2
-                rows = int(num_models/cols)
-            else:
-                cols = 3
-                rows = int(np.ceil(num_models/cols))
+            cols = 3
+            rows = int(np.ceil(num_models/cols))
             fig, axs = plt.subplots(rows, cols, figsize=(cols * 4, rows * 4))
             axs = axs.flatten()
     
             # iterate models to display confusion matrices
             for i, model in enumerate(models_to_show):
                 cm_data = models_data[model]["metrics"]["confusion_matrix"]
+                cm_data = np.array(cm_data)
                 disp = ConfusionMatrixDisplay(confusion_matrix=cm_data, display_labels=classes)
                 disp.plot(ax=axs[i], cmap=plt.cm.Blues)
-                axs[i].set_title(f"{model}")
+                m_name = model.split("-")[1]
+                axs[i].set_title(m_name)
     
             # remove not used axes
             for ax in range(num_models, len(axs)):
@@ -136,8 +163,11 @@ class Visualization:
             y_vals = []
             for model in models_to_show:
                 y_vals.append(models_data[model]["metrics"][metric]) 
-            plt.plot(models_to_show, y_vals, label=metric, marker='o')
-    
+            models_names = [m.split("-")[1] for m in models_to_show]
+            plt.plot(models_names, y_vals, label=metric, marker='o')
+
+        # set axis labels angles
+        plt.xticks(rotation=60)
         # Add labels to the plot
         plt.xlabel('Models')
         plt.ylabel('Performance Score')
@@ -168,8 +198,8 @@ class Visualization:
             for metric in metrics:
                 y_vals.append(models_data[model]["metrics"][metric]) 
             y_vals.append(y_vals[0])
-            print(f"Model: {model} | angles: {len(angles)} | y_vals: {len(y_vals)}")
-            ax.plot(angles, y_vals, label=model, marker='o')
+            model_name = model.split("-")[1]
+            ax.plot(angles, y_vals, label=model_name, marker='o')
             ax.fill(angles, y_vals, alpha=0.1)
     
         # Set labels for each metric
@@ -198,7 +228,8 @@ class Visualization:
             roc_auc = models_data[model]["metrics"]["roc_auc"]
     
             # initiate plot
-            plt.plot(fpr, tpr, label=f'{model} (AUC = {roc_auc:.2f})')
+            model_name = model.split("-")[1]
+            plt.plot(fpr, tpr, label=f'{model_name} (AUC = {roc_auc:.2f})')
     
         # format plot 
         plt.plot([0, 1], [0, 1], 'k--')
@@ -237,7 +268,7 @@ class Visualization:
     
         
         # set font size for plots
-        font = {'size': 8}
+        font = {'size': 9}
         plt.rc('font', **font)
         
         # initiate subplots
@@ -247,7 +278,7 @@ class Visualization:
         # iterate models to display lerning curves
         for i, model in enumerate(models_to_show):
             # get model name
-            m_name = model.split(" - ")[2]
+            m_name = model.split(" - ")[1]
             # plots each metric for each model 
             for metric, c in zip(metrics, colors):
                 values = models_data[model]["history"][metric]

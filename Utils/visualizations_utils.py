@@ -13,7 +13,7 @@ from skimage.exposure import rescale_intensity
 
 # Models visualization 
 class Visualization:
-    def __init__(self, out_directory="Outputs", str_filter=None):
+    def __init__(self, out_directory="Outputs", str_filter=None, identifier=None):
         self.out_directory = Path(out_directory)
         self.str_filter = str_filter
         self.models_data = {}
@@ -120,7 +120,11 @@ class Visualization:
             # https://medium.com/@eceisikpolat/plot-and-customize-multiple-confusion-matrices-with-matplotlib-a19ed00ca16c
             disp = ConfusionMatrixDisplay(confusion_matrix=cm_data, display_labels=classes)
             disp.plot(cmap=plt.cm.Blues)
-            m_name = model_name.split("-")[1]
+            
+            if identifier is None:
+                m_name = model_name.split("-")[1]
+            else:
+                m_name = model_name.split("-")[identifier]
             plt.title(m_name)
             plt.show()
         else:
@@ -137,7 +141,11 @@ class Visualization:
                 disp = ConfusionMatrixDisplay(confusion_matrix=cm_data, display_labels=classes)
                 disp.plot(ax=axs[i], cmap=plt.cm.Blues)
                 m_name = model.split("-")[1]
-                axs[i].set_title(m_name)
+                if identifier is None:
+                    m_name = model.split("-")[1]
+                else:
+                    m_name = model.split("-")[identifier]
+                    axs[i].set_title(m_name)
     
             # remove not used axes
             for ax in range(num_models, len(axs)):
@@ -163,7 +171,12 @@ class Visualization:
             y_vals = []
             for model in models_to_show:
                 y_vals.append(models_data[model]["metrics"][metric]) 
-            models_names = [m.split("-")[1] for m in models_to_show]
+                
+            if identifier is None:
+                models_names = [m.split("-")[1] for m in models_to_show]
+            else:
+                models_names = [m.split("-")[identifier] for m in models_to_show]
+
             plt.plot(models_names, y_vals, label=metric, marker='o')
 
         # set axis labels angles
@@ -198,7 +211,12 @@ class Visualization:
             for metric in metrics:
                 y_vals.append(models_data[model]["metrics"][metric]) 
             y_vals.append(y_vals[0])
-            model_name = model.split("-")[1]
+
+            if identifier is None:
+                model_name = model.split("-")[1]
+            else:
+                model_name = model.split("-")[identifier]
+            
             ax.plot(angles, y_vals, label=model_name, marker='o')
             ax.fill(angles, y_vals, alpha=0.1)
     
@@ -227,8 +245,14 @@ class Visualization:
             # get roc_auc value 
             roc_auc = models_data[model]["metrics"]["roc_auc"]
     
+
+            # set name
+            if identifier is None:
+                model_name = model.split("-")[1]
+            else:
+                model_name = model.split("-")[identifier]
+            
             # initiate plot
-            model_name = model.split("-")[1]
             plt.plot(fpr, tpr, label=f'{model_name} (AUC = {roc_auc:.2f})')
     
         # format plot 
@@ -277,8 +301,13 @@ class Visualization:
         
         # iterate models to display lerning curves
         for i, model in enumerate(models_to_show):
+            
             # get model name
-            m_name = model.split(" - ")[1]
+            if identifier is None:
+                m_name = model.split(" - ")[1]
+            else:
+                m_name = model.split(" - ")[identifier]
+            
             # plots each metric for each model 
             for metric, c in zip(metrics, colors):
                 values = models_data[model]["history"][metric]

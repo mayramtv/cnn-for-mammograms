@@ -67,6 +67,84 @@ class Basic_Custom_CNN:
 
         return path
 
+class Dynamic_Custom_CNN:
+    '''
+    Dynamic custom model architecture. Setups, runs and saves model
+    '''
+    def __init__(self, input_shape=(256, 256, 1), num_classes=1, epochs=10, layer_sizes=[32, 64, 128], activation='relu', dense_units=None, dropout=None):
+        self.input_shape = input_shape
+        self.classes = num_classes
+        self.epochs = epochs
+        self.layer_sizes = layer_sizes
+        self.activation = activation
+        self.dense_units = dense_units
+        self.dropout = dropout
+        self.model = None
+    
+    def architecture(self):
+        '''Sets up model architecture for custom CNN'''
+        model = models.Sequential()
+        model.add(layers.Input(shape=self.input_shape))
+
+        # add convolutional layers
+        for size in self.layer_sizes:
+            model.add(layers.Conv2D(size, (3,3), padding="same"))
+            model.add(layers.BatchNormalization())
+            model.add(layers.Activation(self.activation))
+            model.add(layers.MaxPooling2D((2,2)))
+
+        model.add(layers.Flatten())
+
+        # add densly connected layers
+        if self.dense_units is not None:
+            for d_units in self.dense_units:
+                model.add(layers.Dense(d_units, activation=self.activation))
+                if self.dropout is not None:
+                    model.add(layers.Dropout(self.dropout))
+            
+        if self.classes == 1:
+            # binary classification
+            model.add(layers.Dense(1, activation="sigmoid")) 
+            loss = "binary_crossentropy"
+        else:
+            # multy label class
+            model.add(layers.Dense(self.classes, activation="softmax"))     
+            loss = "categorical_crossentropy"
+        
+        model.compile(loss=loss,
+                      optimizer=keras.optimizers.Adam(learning_rate=1e-4),
+                      metrics=['accuracy']
+                       )
+    
+        self.model = model
+        return self.model
+    
+    def train_model(self, train_gen, val_gen=None):
+        '''Trains model'''
+        # verify that model is initialized
+        if self.model is None:
+            raise ValueError("You need to initialize model using architecture() before training")
+            
+        # fit data to model
+        history = self.model.fit(train_gen, validation_data=val_gen, epochs=self.epochs)
+        return history.history
+        
+    def get_model(self):
+        '''Returns trained model'''
+        return self.model
+
+    def save_model(self, models_directory="Models", model_file="new_file"):
+        '''Save model data'''
+
+        # makes directory for outputs
+        os.makedirs(models_directory, exist_ok=True)
+
+        # creates path and saves model
+        path = os.path.join(models_directory, model_file)
+        self.model.save(path)
+
+        return path
+
 
 
 class VGG_CNN:

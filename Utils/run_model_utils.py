@@ -95,6 +95,10 @@ def run_model(data_sets,
                 print("No model settings were provided. The model will use default settings: \n", models_settings)
             
             for m_name, model_settings in models_settings.items():
+                # reset and clears variables before creating a new model 
+                K.clear_session()
+
+                # initiate model
                 model_instance = Dynamic_Custom_CNN(input_shape=(256, 256, 1), 
                                                     num_classes=1, 
                                                     epochs=model_settings["epochs"], 

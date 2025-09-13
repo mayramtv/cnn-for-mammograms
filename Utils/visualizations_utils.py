@@ -16,6 +16,7 @@ class Visualization:
     def __init__(self, out_directory="Outputs", str_filter=None, identifier=None):
         self.out_directory = Path(out_directory)
         self.str_filter = str_filter
+        self.identifier = identifier
         self.models_data = {}
 
             
@@ -107,7 +108,7 @@ class Visualization:
         - classes: a list of the classes ('Benigant', 'Malignant')
         '''
         # set font size for plots
-        font = {'size': 9}
+        font = {'size': 8}
         plt.rc('font', **font)
         
         if len(models_to_show) == 1:
@@ -121,10 +122,10 @@ class Visualization:
             disp = ConfusionMatrixDisplay(confusion_matrix=cm_data, display_labels=classes)
             disp.plot(cmap=plt.cm.Blues)
             
-            if identifier is None:
+            if self.identifier is None:
                 m_name = model_name.split("-")[1]
             else:
-                m_name = model_name.split("-")[identifier]
+                m_name = model_name.split("-")[self.identifier]
             plt.title(m_name)
             plt.show()
         else:
@@ -141,10 +142,10 @@ class Visualization:
                 disp = ConfusionMatrixDisplay(confusion_matrix=cm_data, display_labels=classes)
                 disp.plot(ax=axs[i], cmap=plt.cm.Blues)
                 m_name = model.split("-")[1]
-                if identifier is None:
+                if self.identifier is None:
                     m_name = model.split("-")[1]
                 else:
-                    m_name = model.split("-")[identifier]
+                    m_name = model.split("-")[self.identifier]
                     axs[i].set_title(m_name)
     
             # remove not used axes
@@ -156,7 +157,7 @@ class Visualization:
             plt.show()
         
 
-    def line_plot(self, models_data, models_to_show, metrics):
+    def line_plot(self, models_data, models_to_show, metrics, wrap_char=None):
         '''
         Plot one or more metrics in a line plot 
         
@@ -165,6 +166,12 @@ class Visualization:
         - models_to_show: a list of the models confusion matrices needed to be displayed
         - metrics: a list of the metrics to add at the line plot.
         '''
+        # set font size for plots
+        font = {'size': 8}
+        plt.rc('font', **font)
+
+        # set plot figure size
+        plt.figure(figsize=(10, 5))
     
         # plots each metric for each model
         for metric in metrics:
@@ -172,10 +179,12 @@ class Visualization:
             for model in models_to_show:
                 y_vals.append(models_data[model]["metrics"][metric]) 
                 
-            if identifier is None:
+            if self.identifier is None:
                 models_names = [m.split("-")[1] for m in models_to_show]
             else:
-                models_names = [m.split("-")[identifier] for m in models_to_show]
+                models_names = [m.split("-")[self.identifier] for m in models_to_show]
+                if wrap_char is not None:
+                    models_names = ["\n".join([m[:wrap_char], m[wrap_char:]]) for m in models_names]
 
             plt.plot(models_names, y_vals, label=metric, marker='o')
 
@@ -195,6 +204,11 @@ class Visualization:
         '''
         Plots all metrics for each model in one color and adds all models in one radar to compare models.
         '''
+
+        # set font size for plots
+        font = {'size': 8}
+        plt.rc('font', **font)
+        
         # number of metrics
         num_metrics = len(metrics)
         
@@ -212,10 +226,10 @@ class Visualization:
                 y_vals.append(models_data[model]["metrics"][metric]) 
             y_vals.append(y_vals[0])
 
-            if identifier is None:
+            if self.identifier is None:
                 model_name = model.split("-")[1]
             else:
-                model_name = model.split("-")[identifier]
+                model_name = model.split("-")[self.identifier]
             
             ax.plot(angles, y_vals, label=model_name, marker='o')
             ax.fill(angles, y_vals, alpha=0.1)
@@ -239,6 +253,11 @@ class Visualization:
         '''
         Plots the True Positive Rate(TPR) and False Positive Rate(FPR) at different thresholds 
         '''
+
+        # set font size for plots
+        font = {'size': 8}
+        plt.rc('font', **font)
+        
         for model in models_to_show:
             # calculate false positive rate and true positive rate using the ROC curve 
             fpr, tpr, _ = roc_curve(models_data[model]["labels"]["y_true"], models_data[model]["labels"]["y_probs"])
@@ -247,10 +266,10 @@ class Visualization:
     
 
             # set name
-            if identifier is None:
+            if self.identifier is None:
                 model_name = model.split("-")[1]
             else:
-                model_name = model.split("-")[identifier]
+                model_name = model.split("-")[self.identifier]
             
             # initiate plot
             plt.plot(fpr, tpr, label=f'{model_name} (AUC = {roc_auc:.2f})')
@@ -266,7 +285,7 @@ class Visualization:
         plt.show()
 
     
-    def learning_curves(self, models_data, models_to_show, metrics, colors):
+    def learning_curves(self, models_data, models_to_show, metrics, colors, wrap_char=None):
         '''
             Plot one or more model with one or more metrics from the model's history  
             
@@ -276,6 +295,11 @@ class Visualization:
             - metrics: a list of the metrics.
             - a list of colors of the same size of metrics
         '''
+
+        # set font size for plots
+        font = {'size': 9}
+        plt.rc('font', **font)
+        
         # verify the number of colors matches the metrics length
         if len(colors) != len(metrics):
             raise ValueError("Your list of colors should match the size of the list of metrics")
@@ -283,30 +307,29 @@ class Visualization:
     
         # calculate num of columns and rows
         num_vis = len(models_to_show)
-        if num_vis % 4 == 0:
-            cols = 4
-            rows = int(num_vis / cols)
-        else:
-            cols = 3
-            rows = int(np.ceil(num_vis / cols))
-    
-        
-        # set font size for plots
-        font = {'size': 9}
-        plt.rc('font', **font)
+        # if num_vis % 4 == 0:
+        #     cols = 4
+        #     rows = int(num_vis / cols)
+        # else:
+        cols = 4
+        rows = int(np.ceil(num_vis / cols))
+
         
         # initiate subplots
         fig, axs = plt.subplots(rows, cols, figsize=(cols * 3, rows * 4))
+        fig.subplots_adjust(wspace=0.5)
         axs = np.atleast_1d(axs).flatten()
         
         # iterate models to display lerning curves
         for i, model in enumerate(models_to_show):
             
             # get model name
-            if identifier is None:
+            if self.identifier is None:
                 m_name = model.split(" - ")[1]
             else:
-                m_name = model.split(" - ")[identifier]
+                m_name = model.split(" - ")[self.identifier]
+                if wrap_char is not None:
+                    m_name = "\n".join([m_name[:wrap_char], m_name[wrap_char:]])
             
             # plots each metric for each model 
             for metric, c in zip(metrics, colors):
@@ -318,7 +341,7 @@ class Visualization:
                 # Add labels to the plot
                 axs[i].set_xlabel('Epochs')
                 axs[i].set_ylabel('Learning Performance')
-                axs[i].set_title(m_name)
+                axs[i].set_title(m_name,  wrap=True)
                 axs[i].legend()
     
         # remove not used axes

@@ -94,7 +94,7 @@ def image_preprocessing(image,
         ''' Find contours of breast image using the mask.''' 
         
         # normalize image and convert to UINT8 if needed
-        image = convert_uint8(img)
+        image = convert_uint8(image)
         if breast_mask is not None:
             breast_mask = convert_uint8(breast_mask)
         
@@ -133,7 +133,7 @@ def image_preprocessing(image,
         '''
         
         # convert to float
-        image = img.astype(np.float32)
+        image = image.astype(np.float32)
         
         # calculate sigma of the detail coefficients    
         if not is_resnet_vgg:
@@ -182,7 +182,7 @@ def image_preprocessing(image,
         # https://docs.opencv.org/4.x/d5/daf/tutorial_py_histogram_equalization.html
         
         # normalize image and convert to UINT8 if needed
-        image = convert_uint8(img)
+        image = convert_uint8(image)
     
         # verify the image is in gray scale
         if len(image.shape) == 3 and image.shape[-1] == 3:  # If color image
@@ -251,7 +251,7 @@ def image_preprocessing(image,
             - radius of kernel
         '''
         # normalize image and convert to UINT8 if needed
-        image = convert_uint8(img)
+        image = convert_uint8(image)
         
         # convert to gray scale
         if image.ndim == 3 and image.shape[-1] == 3:

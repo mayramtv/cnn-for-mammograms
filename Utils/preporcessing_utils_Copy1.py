@@ -258,7 +258,7 @@ def image_preprocessing(image,
             image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
         # removes 3rd channel
-        if img.ndim == 3 and image.shape[-1] == 1:  # If color image
+        if image.ndim == 3 and image.shape[-1] == 1:  # If color image
             image = np.squeeze(image)
     
         # calculate local binary pattern
@@ -550,7 +550,7 @@ def dataset_builder_preprocess(dataset,
             
         return image, label
 
-    preprocessed_dset = new_dataset.map(image_handling, num_parallel_calls=tf.data.AUTOTUNE)
+    preprocessed_dset = new_dataset.map(preprocess, num_parallel_calls=tf.data.AUTOTUNE)
 
     preprocessed_dset = preprocessed_dset.batch(32).prefetch(tf.data.AUTOTUNE)
     return preprocessed_dset
@@ -620,6 +620,32 @@ def ablation(options):
                 tech_group[technique] = True
             else:
                 tech_group[technique] = False
+                
+        techniques_groups[group_name] = tech_group
+
+    return techniques_groups
+
+def combination(options):    
+    '''
+    Creates a dictionary with the group of techniques selected by using ablation
+    '''
+    # by using ablation, create the combinations of techniques 
+    techniques_groups = {}
+    techniques_groups["Baseline Basic Preporcessing"] = {option:False for option in options} # no techniques
+    techniques_groups["All Preporcessing Techniques"] = {option:True for option in options} # all tecniuqes
+
+    # removes one techniques at a time 
+    for option in options:
+        # creates the name of each technique
+        group_name = option.split("_")[1:]
+        group_name =  "Add " + " ".join(group_name).capitalize()
+        tech_group = {}
+        # then uses techniques for applying a boolean
+        for technique in options: 
+            if technique != option:
+                tech_group[technique] = False
+            else:
+                tech_group[technique] = True
                 
         techniques_groups[group_name] = tech_group
 

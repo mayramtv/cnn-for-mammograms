@@ -124,6 +124,8 @@ class Visualization:
             
             if self.identifier is None:
                 m_name = model_name.split("-")[1]
+            elif isinstance(self.identifier, list):
+                m_name = " ".join([model_name.split("-")[i] for i in self.identifier])
             else:
                 m_name = model_name.split("-")[self.identifier]
             plt.title(m_name)
@@ -144,9 +146,12 @@ class Visualization:
                 m_name = model.split("-")[1]
                 if self.identifier is None:
                     m_name = model.split("-")[1]
+                elif isinstance(self.identifier, list):
+                    m_name = " ".join([model.split("-")[i] for i in self.identifier])
                 else:
                     m_name = model.split("-")[self.identifier]
-                    axs[i].set_title(m_name)
+                    
+                axs[i].set_title(m_name)
     
             # remove not used axes
             for ax in range(num_models, len(axs)):
@@ -181,10 +186,13 @@ class Visualization:
                 
             if self.identifier is None:
                 models_names = [m.split("-")[1] for m in models_to_show]
+            elif isinstance(self.identifier, list):
+                models_names = [" ".join([m.split("-")[i] for i in self.identifier]) for m in models_to_show]
             else:
                 models_names = [m.split("-")[self.identifier] for m in models_to_show]
-                if wrap_char is not None:
-                    models_names = ["\n".join([m[:wrap_char], m[wrap_char:]]) for m in models_names]
+                
+            if wrap_char is not None:
+                models_names = ["\n".join([m[:wrap_char], m[wrap_char:]]) for m in models_names]
 
             plt.plot(models_names, y_vals, label=metric, marker='o')
 
@@ -228,6 +236,8 @@ class Visualization:
 
             if self.identifier is None:
                 model_name = model.split("-")[1]
+            elif isinstance(self.identifier, list):
+                model_name = " ".join([model.split("-")[i] for i in self.identifier])
             else:
                 model_name = model.split("-")[self.identifier]
             
@@ -268,6 +278,8 @@ class Visualization:
             # set name
             if self.identifier is None:
                 model_name = model.split("-")[1]
+            elif isinstance(self.identifier, list):
+                model_name = " ".join([model.split("-")[i] for i in self.identifier])
             else:
                 model_name = model.split("-")[self.identifier]
             
@@ -326,10 +338,13 @@ class Visualization:
             # get model name
             if self.identifier is None:
                 m_name = model.split(" - ")[1]
+            elif isinstance(self.identifier, list):
+                m_name = " ".join([model.split("-")[i] for i in self.identifier])
             else:
                 m_name = model.split(" - ")[self.identifier]
-                if wrap_char is not None:
-                    m_name = "\n".join([m_name[:wrap_char], m_name[wrap_char:]])
+                
+            if wrap_char is not None:
+                m_name = "\n".join([m_name[:wrap_char], m_name[wrap_char:]])
             
             # plots each metric for each model 
             for metric, c in zip(metrics, colors):

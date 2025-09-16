@@ -170,7 +170,7 @@ class VGG16_Transfer:
         # create architecture: add base ans custom classifier 
         vgg_model = models.Sequential([
             vgg_model_base,                            # convolutional layers
-            layers.flatten(),
+            layers.Flatten(),
             layers.Dense(256, activation="relu"),      # fully connected layer
             layers.Dropout(self.dropout),                       # add settings selected in P2 to not overfit
             layers.Dense(self.num_classes, activation="sigmoid")      # binary classification(scalar value)
@@ -219,7 +219,7 @@ class ResNet50_Transfer:
         self.lr = lr
         self.resnet_model = None
 
-   def architecture(self):
+    def architecture(self):
         '''Builds ResNet50 model architecture for transfer learning '''
         # load pretrained model, fully connected layers(top) are not downloaded
         resnet_model_base = ResNet50(weights="imagenet", include_top=False, input_shape=self.input_shape)

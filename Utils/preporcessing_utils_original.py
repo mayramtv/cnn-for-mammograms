@@ -1,6 +1,5 @@
 import pandas as pd
 import numpy as np
-import os
 import cv2
 import pywt
 from functools import partial
@@ -28,24 +27,12 @@ def image_preprocessing(image,
         - custom_cnn_size is the size for the Custom CNN model input image to be resized
         - resnet_vgg_size is the size for the ResNet/VGG models input image to be resized"
     '''
-        
     def convert_uint8(img):
         '''Convert image to intiger to work with cv2'''
         if img.dtype != np.uint8:
             img = cv2.normalize(img, None, 0, 255, cv2.NORM_MINMAX)
             img = img.astype(np.uint8)
         return img
-
-    def expand_dim(img):
-        '''Expand dimentions if channel is not added'''
-        if not is_resnet_vgg and img.ndim == 2:
-            img = np.expand_dims(img, axis=-1)
-        elif is_resnet_vgg and img.ndim == 2:
-            img = np.stack([img, img, img], axis=-1)
-        elif is_resnet_vgg and img.ndim == 3 and img.shape[-1] == 1:
-            img = np.repeat(img, 3, axis=-1)
-        return img
-            
 
     def background_removal(image):
         '''
@@ -54,14 +41,11 @@ def image_preprocessing(image,
         '''
         
         # normalize image and convert to UINT8 if needed
-        image = convert_uint8(image)
-        image = expand_dim(image)
-
+        image = convert_uint8(img)
         
         # resize to remove a contour of the whole image to remove some of the marks of x-rays that are not the breast
         height, width = image.shape[:2]
-        image = image[45:height-45, 45:width-45, :]
-
+        image = image[45:height-45, 45:width-45]
     
         # smooth image
         blur_img = cv2.GaussianBlur(image, (5,5), 0)
@@ -82,9 +66,6 @@ def image_preprocessing(image,
         # generate mask of black background
         mask = (labels == largest_label).astype(np.uint8) * 255
         breast_img = cv2.bitwise_and(image, image, mask=mask)
-
-        # expand dimentions
-        breast_img = expand_dim(breast_img)
     
         return closed_img, image, mask, breast_img
 
@@ -94,7 +75,7 @@ def image_preprocessing(image,
         ''' Find contours of breast image using the mask.''' 
         
         # normalize image and convert to UINT8 if needed
-        image = convert_uint8(image)
+        image = convert_uint8(img)
         if breast_mask is not None:
             breast_mask = convert_uint8(breast_mask)
         
@@ -131,23 +112,15 @@ def image_preprocessing(image,
            - calculating and applying soft thresholding value to coefficients 
            - and reconstructing image using coefficinets
         '''
-        
         # convert to float
-        image = image.astype(np.float32)
+        image = img.astype(np.float32)
         
-        # calculate sigma of the detail coefficients    
-        if not is_resnet_vgg:
-            # adjust channels
-            if image.ndim == 3 and image.shape[-1] == 1:
-                image = np.squeeze(image)  
-            sigma = estimate_sigma(image, channel_axis=None)
-        else:
-            sigma = estimate_sigma(image, channel_axis=-1)
-
         # Calculate coefficients for the image using wavedec2 for 2D (image) decomposition 
         # using the  Daubechies wavelet db1 (Haar wavelet of interval of 0-1)  
         init_coeffs = pywt.wavedec2(image, wavelet="db1", level=2)
-            
+    
+        # calculate sigma of the detail coefficients
+        sigma = estimate_sigma(image, channel_axis=None)
     
         # calculate initial threshold
         init_threshold = sigma * np.sqrt(2 * np.log2(image.size))
@@ -162,13 +135,10 @@ def image_preprocessing(image,
         # Reconstruct image using waverec2
         denoised_img = pywt.waverec2(new_coeffs, wavelet="db1")
         reconstructed = denoised_img[:image.shape[0], :image.shape[1]]
-        
-        # expand dimentions
-        reconstructed = expand_dim(reconstructed)
+
+        # solve negative value
         reconstructed = reconstructed.astype(np.float32)
-        
-        # clip values between 0-255
-        reconstructed = np.clip(reconstructed, 0, 255).astype(np.float32)
+        reconstructed = np.clip(reconstructed, 0, None) 
         
         return reconstructed
 
@@ -180,20 +150,17 @@ def image_preprocessing(image,
         '''
         # code provenance 
         # https://docs.opencv.org/4.x/d5/daf/tutorial_py_histogram_equalization.html
-        
+
         # normalize image and convert to UINT8 if needed
-        image = convert_uint8(image)
+        image = convert_uint8(img)
     
         # verify the image is in gray scale
-        if len(image.shape) == 3 and image.shape[-1] == 3:  # If color image
+        if len(image.shape) == 3:  # If color image
             image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        
+    
         # initialize CLAHE and apply to image
         clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
         clh_image = clahe.apply(image)
-
-        # expand dimentions
-        clh_image = expand_dim(clh_image)
         
         return clh_image
 
@@ -230,8 +197,6 @@ def image_preprocessing(image,
         # calculate mean of coefficinets
         mean_alpha = cv2.boxFilter(alpha, -1, (radius, radius))
         mean_beta = cv2.boxFilter(beta, -1, (radius, radius))
-        mean_alpha = np.expand_dims(mean_alpha, axis=-1)
-        mean_beta = np.expand_dims(mean_beta, axis=-1)
     
         # apply mean of alpha to the guide image and add mean of beta
         filtered = mean_alpha * guide_image + mean_beta
@@ -251,24 +216,17 @@ def image_preprocessing(image,
             - radius of kernel
         '''
         # normalize image and convert to UINT8 if needed
-        image = convert_uint8(image)
+        image = convert_uint8(img)
         
         # convert to gray scale
-        if image.ndim == 3 and image.shape[-1] == 3:
+        if len(image.shape) == 3:
             image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-        # removes 3rd channel
-        if image.ndim == 3 and image.shape[-1] == 1:  # If color image
-            image = np.squeeze(image)
     
         # calculate local binary pattern
-        lbp = local_binary_pattern(image, n_points, radius, method="uniform")
+        lbp = local_binary_pattern(image, n_points, radius)
     
         # normalize image for visualization
         lbp_img = np.uint8(255 * (lbp - lbp.min()) / (lbp.max() - lbp.min()))
-
-        # expand dimentions
-        lbp_img = expand_dim(lbp_img)
     
         return lbp_img
 
@@ -316,12 +274,52 @@ def image_preprocessing(image,
         return padded
 
 
+    # def resize(img, is_resnet_vgg=False, custom_cnn_size=256, resnet_vgg_size=224, is_lbp=False):
+    #     '''
+    #     Resize an image to fit a custom CNN, ResNet and VGG models
+    #     Parameters:
+    #         image: image to be resized
+    #         custom_cnn: Boolean stating if the size is for custom CNN
+    #         resnet_vgg: Boolean stating if the size is for ResNet/VGG models
+    #     '''
+
+    #     if is_resnet_vgg:
+    #         target_size = resnet_vgg_size
+    #     else:
+    #         target_size = custom_cnn_size
+        
+    #     height, width = img.shape[:2]
+    
+    #     # calculate ration of image sides
+    #     ratio = float(target_size) / max(height, width)
+    #     new_width = int(width * ratio)
+    #     new_height = int(height * ratio)
+    
+    #     # resize image based on new ration
+    #     resized_img = cv2.resize(img, (new_width, new_height), interpolation=cv2.INTER_AREA)
+    
+    #     # calculate the amount of padding to be added in each side
+    #     width_pad = np.max(target_size - new_width)
+    #     height_pad = np.max(target_size - new_height)
+    #     top, bottom = height_pad // 2, height_pad - (height_pad // 2)
+    #     left, right = width_pad // 2, width_pad - (width_pad // 2)
+    
+    #     # add zero padding
+    #     input_resized_img = cv2.copyMakeBorder(resized_img, top, bottom, left, right,
+    #                                     cv2.BORDER_CONSTANT, value=[0, 0, 0])
+
+    #     if is_resnet_vgg == False:
+    #         input_resized_img = np.expand_dims(input_resized_img, axis=-1)
+            
+    #     return input_resized_img
+
     img = image
     breast_mask = None
     is_lbp = False
     
-    if not is_resnet_vgg and img.ndim == 2:
-        img = np.expand_dims(img, axis=-1)
+    if not is_resnet_vgg and not is_lbp or len(img.shape) == 2:
+            img = tf.expand_dims(img, axis=-1)
+    
     
     if preprocessing_techniques["apply_background_removal"] == True:
         _, _, breast_mask, img = background_removal(img)
@@ -347,7 +345,6 @@ def image_preprocessing(image,
                  custom_cnn_size=custom_cnn_size, 
                  resnet_vgg_size=resnet_vgg_size, 
                  is_lbp=is_lbp)
-    
     # check for correct size
     if is_resnet_vgg:
         corr_size = resnet_vgg_size
@@ -361,6 +358,12 @@ def image_preprocessing(image,
     
     # convert image to tensorflow image
     img = tf.convert_to_tensor(img, dtype=tf.float32)
+
+    # tf.print("DEBUG:",
+    #          "shape =", tf.shape(img),
+    #          "dtype =", img.dtype,
+    #          "min =", tf.reduce_min(img),
+    #          "max =", tf.reduce_max(img))
 
     return img
     
@@ -404,114 +407,17 @@ def split_data(train, test, val_size, stratify_col="label"):
     print("Validation set:", len(val_data), "cases,", val_percent, "%")
     print("Test set:", len(test_data), "cases,", test_percent, "%")
     return train_data, val_data, test_data
-
-# preprocess image in place and saves locally in case iterators do not work
-def preprocess_locally(dset, techniques_groups):
-
-    # parent directory
-    parent_dir_name = "Preprocessed_Images/"
-    os.makedirs(parent_dir_name, exist_ok=True)
-    
-    for g_name, group in techniques_groups.items():
-
-        # group directory for outputs
-        name = "custom_" + g_name.lower().replace(" ", "_")
-        im_dir = os.path.join(parent_dir_name, name)
-        os.makedirs(im_dir, exist_ok=True)
-        print("Saving images for", g_name, ".....")
-        
-        for path in dset["image_path"]:
-            
-            # loads image
-            original_img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
-            
-            # perprocess image
-            img = image_preprocessing(original_img.copy(), techniques_groups[g_name])        
-
-            # convet image to numpy array and to to uint8 gray scale
-            img = img.numpy()
-            
-            if img.ndim == 4 and img.shape[0] == 1:
-                img = img[0]
-            if img.ndim == 3 and img.shape[-1] == 1:
-                img = img.squeeze(-1)    
-            
-            # creates path and saves image
-            file_name = path.split("/")[-1]
-            
-            im_path = os.path.join(im_dir, file_name)
-            cv2.imwrite(im_path, img)
-        print("Finish saving images for", g_name)
-    
-# Create Image Iterators    
-def dataset_builder(dataset, 
-                    is_resnet_vgg=False, 
-                    preprocessing_techniques_name=None, 
-                    preprocessing_techniques=None, shuffle=False):
-        
-    # gets paths and labels from dataset
-    paths = dataset["image_path"].values
-    labels = dataset["label"].values
-
-    # create images directory path
-    parent_dir = "Preprocessed_Images/"
-    im_dir_name = "custom_" + preprocessing_techniques_name.lower().replace(" ", "_")
-    im_dir = os.path.join(parent_dir, im_dir_name)
-
-    # update paths to preprocessed paths
-    new_paths = []
-    for path in paths:
-        file_name = os.path.basename(path) 
-        im_path = os.path.join(im_dir, file_name)
-        new_paths.append(im_path)
-
-        
-    # create new dataset
-    new_dataset = tf.data.Dataset.from_tensor_slices((new_paths, labels))
-
-    # shuffles data
-    if shuffle:
-        new_dataset = new_dataset.shuffle(buffer_size=len(dataset), seed=42)
-
-    # loads each 
-    def image_handling(path, label):
-        # loads original image
-        image = tf.io.read_file(path)
-
-        if is_resnet_vgg:
-            # make sure image is in gray scale
-            image = tf.image.decode_png(image, channels=3)
-            image = tf.image.resize(image, [224, 224])
-        else:
-            image = tf.image.decode_png(image, channels=1)
-            image = tf.image.resize(image, [256, 256])
-
-        # normalize image for model
-        image = tf.image.convert_image_dtype(image, tf.float32)
-
-        return image, label
-
-    preprocessed_dset = new_dataset.map(image_handling, num_parallel_calls=tf.data.AUTOTUNE)
-
-    preprocessed_dset = preprocessed_dset.batch(32).prefetch(tf.data.AUTOTUNE)
-    return preprocessed_dset
-
     
 
-
-        
-# Create Image Iterators    
-def dataset_builder_preprocess(dataset, 
-                               is_resnet_vgg=False, 
-                               preprocessing_techniques_name=None, 
-                               preprocessing_techniques=None, 
-                               shuffle=False):
-    # sets size
+def image_iterators(data_sets, is_resnet_vgg=False, preprocessing_techniques=None):
+    '''
+        Generate a data generator for each dataset 
+    '''
     if is_resnet_vgg:
         size = 224
     else:
         size = 256
-        
+
     # function contain only the image and other arguments are frozen 
     preprocessing_function = partial(image_preprocessing, 
                                    preprocessing_techniques=preprocessing_techniques,
@@ -519,83 +425,59 @@ def dataset_builder_preprocess(dataset,
                                    custom_cnn_size=size, 
                                    resnet_vgg_size=size
                                     )
-        
-    # gets paths and labels from dataset
-    paths = dataset["image_path"].values
-    labels = dataset["label"].values
-    new_dataset = tf.data.Dataset.from_tensor_slices((paths, labels))
-
-    # shuffles data
-    if shuffle:
-        new_dataset = new_dataset.shuffle(buffer_size=len(dataset), seed=42)
-
-    # loads each 
-    # def image_handling(path, label):
-    def preprocess(path, label):
-        # loads original image
-        image = tf.io.read_file(path)
-        # make sure image is in gray scale
-        image = tf.image.decode_png(image, channels=1)
-        # normalize image for model
-        image = tf.image.convert_image_dtype(image, tf.float32)
-
-        # preprocess images
-        image = tf.numpy_function(preprocessing_function, [image], tf.float32)
-        
-        # sets size
-        if is_resnet_vgg:
-            image.set_shape((224, 224, 3))
-        else:
-            image.set_shape((256, 256, 1))
-            
-        return image, label
-
-    preprocessed_dset = new_dataset.map(preprocess, num_parallel_calls=tf.data.AUTOTUNE)
-
-    preprocessed_dset = preprocessed_dset.batch(32).prefetch(tf.data.AUTOTUNE)
-    return preprocessed_dset
-
-def image_iterators(datasets, 
-                    with_preprocess=False, 
-                    is_resnet_vgg=False, 
-                    preprocessing_techniques_name=None, 
-                    preprocessing_techniques=None):
-    # setup generators
-    train_data, val_data, test_data = datasets
     
-    # chooses type of iterator dataset builder 
-    if not with_preprocess:
-        train_dset = dataset_builder(train_data, 
-                                 is_resnet_vgg=is_resnet_vgg, 
-                                 preprocessing_techniques_name=preprocessing_techniques_name, 
-                                 preprocessing_techniques=preprocessing_techniques, 
-                                 shuffle=False)
-        val_dset = dataset_builder(val_data, 
-                                   is_resnet_vgg=is_resnet_vgg, 
-                                   preprocessing_techniques_name=preprocessing_techniques_name, 
-                                   preprocessing_techniques=preprocessing_techniques, 
-                                   shuffle=False)
-        test_dset = dataset_builder(test_data, 
-                                    is_resnet_vgg=is_resnet_vgg, 
-                                    preprocessing_techniques_name=preprocessing_techniques_name, 
-                                    preprocessing_techniques=preprocessing_techniques, 
-                                    shuffle=False)
-    else:
-        train_dset = dataset_builder_preprocess(train_data, 
-                             is_resnet_vgg=is_resnet_vgg, 
-                             preprocessing_techniques_name=preprocessing_techniques_name, 
-                             preprocessing_techniques=preprocessing_techniques, 
-                             shuffle=False)
-        val_dset = dataset_builder_preprocess(val_data, 
-                                   is_resnet_vgg=is_resnet_vgg, 
-                                   preprocessing_techniques_name=preprocessing_techniques_name, 
-                                   preprocessing_techniques=preprocessing_techniques, 
-                                   shuffle=False)
-        test_dset = dataset_builder_preprocess(test_data, 
-                                    is_resnet_vgg=is_resnet_vgg, 
-                                    preprocessing_techniques_name=preprocessing_techniques_name, 
-                                    preprocessing_techniques=preprocessing_techniques, 
-                                    shuffle=False)
+    # function for setup generators
+    def dataset_builder(dataset, shuffle=False):
+        '''
+        Generate dataset from preprocessed images
+        '''
+        # gets data
+        paths = dataset["image_path"].values
+        labels = dataset["label"].values.astype("float32")
+
+        # create dataset tensorflow Dataset
+        new_dataset = tf.data.Dataset.from_tensor_slices((paths, labels))
+
+        # shuffles data
+        if shuffle:
+            new_dataset = new_dataset.shuffle(buffer_size=len(dataset), seed=42)
+        
+        # loads each image for preprocessing
+        def image_handling(path, label, preprocessing_function, size):
+            # loads original image
+            image = tf.io.read_file(path)
+            # make sure image is in gray scale
+            image = tf.image.decode_png(image, channels=1)
+            # normalize image for model
+            image = tf.image.convert_image_dtype(image, tf.float32)
+
+            # preprocess image and modify current numpy arrays to work with tf
+            image = tf.numpy_function(preprocessing_function, [image], tf.float32)
+
+            # Restore shape 
+            image.set_shape([size, size, 1])
+
+            return image, label
+
+        # binds variables
+        image_handling_func = partial(image_handling,
+                                preprocessing_function=preprocessing_function,
+                                size=size)
+
+        # map the image handling in the iterator
+        new_dataset = new_dataset.map(image_handling_func, num_parallel_calls=tf.data.AUTOTUNE)
+
+        # batches the dataset 
+        new_dataset = new_dataset.batch(32).prefetch(tf.data.AUTOTUNE)
+
+        return new_dataset       
+
+    # setup generators
+    train_data, val_data, test_data = data_sets
+    
+    train_dset = dataset_builder(train_data, shuffle=True)
+    val_dset = dataset_builder(val_data, shuffle=False)
+    test_dset = dataset_builder(test_data, shuffle=False)
     
     return train_dset, val_dset, test_dset
 
@@ -620,32 +502,6 @@ def ablation(options):
                 tech_group[technique] = True
             else:
                 tech_group[technique] = False
-                
-        techniques_groups[group_name] = tech_group
-
-    return techniques_groups
-
-def combination(options):    
-    '''
-    Creates a dictionary with the group of techniques selected by using ablation
-    '''
-    # by using ablation, create the combinations of techniques 
-    techniques_groups = {}
-    techniques_groups["Baseline Basic Preporcessing"] = {option:False for option in options} # no techniques
-    techniques_groups["All Preporcessing Techniques"] = {option:True for option in options} # all tecniuqes
-
-    # removes one techniques at a time 
-    for option in options:
-        # creates the name of each technique
-        group_name = option.split("_")[1:]
-        group_name =  "Add " + " ".join(group_name).capitalize()
-        tech_group = {}
-        # then uses techniques for applying a boolean
-        for technique in options: 
-            if technique != option:
-                tech_group[technique] = False
-            else:
-                tech_group[technique] = True
                 
         techniques_groups[group_name] = tech_group
 

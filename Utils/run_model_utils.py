@@ -1,8 +1,9 @@
 # from Utils.preporcessing_gen_utils import image_iterators  # comment this line to try model with tf.Dataset generator(next line)
-# from Utils.preporcessing_utils import image_iterators    # comment this line to try model with tf.ImageDataGenerator generator(previus line)
-from Utils.preporcessing_utils_Copy1 import image_iterators
+from Utils.preporcessing_utils import image_iterators    # comment this line to try model with tf.ImageDataGenerator generator(previus line)
 from Utils.models_utils import Basic_Custom_CNN
 from Utils.models_utils import Dynamic_Custom_CNN
+from Utils.models_utils import VGG16_Transfer
+from Utils.models_utils import ResNet50_Transfer
 from Utils.evaluation_utils import Evaluation
 from Utils.save_data_utils import Save_Data
 
@@ -14,6 +15,7 @@ def run_model(data_sets,
               project_phase,
               iteration,
               with_preprocess=False, 
+              image_dir=None,
               model_type="custom",
               is_resnet_vgg=False,
               epochs=10, 
@@ -36,7 +38,8 @@ def run_model(data_sets,
                                                                             with_preprocess=with_preprocess,
                                                                             is_resnet_vgg=is_resnet_vgg,
                                                                             preprocessing_techniques_name=technique_name,
-                                                                            preprocessing_techniques=techniques
+                                                                            preprocessing_techniques=techniques,
+                                                                            image_dir=image_dir
                                                                           )
         if model_type == "custom":
             # create model name
@@ -153,23 +156,30 @@ def run_model(data_sets,
                                          comments="")
                 save_data.save_model_data()
 
-        elif model_type == "VGG16":
+        elif model_type == "VGG16" or model_type == "ResNet50":
             # passes settings for model
             if models_settings is None:
-                models_settings = {"Baseline_2(No Dropout)": {"epochs":10, "activation": 'relu', "dense_units":None, "dropout": None}}
+                models_settings = {"Base_VGG(No Dropout)": {"epochs":10, "activation": 'relu', "dropout": None}}
                 print("No model settings were provided. The model will use default settings: \n", models_settings)
             
             for m_name, model_settings in models_settings.items():
                 # reset and clears variables before creating a new model 
                 K.clear_session()
 
-                # initiate model
-                model_instance = VGG16_Transfer(input_shape=(224, 224, 3), 
+                if model_type == "VGG16":
+
+                    # initiate model 
+                    model_instance = VGG16_Transfer(input_shape=(224, 224, 3), 
+                                                    num_classes=1, 
+                                                    epochs=model_settings["epochs"],  
+                                                    dropout=model_settings["dropout"])
+                elif model_type == "ResNet50":
+                    # initiate model
+                    model_instance = ResNet50_Transfer(input_shape=(224, 224, 3), 
                                                     num_classes=1, 
                                                     epochs=model_settings["epochs"], 
-                                                    activation=model_settings["activation"], 
-                                                    dense_units=model_settings["dense_units"], 
                                                     dropout=model_settings["dropout"])
+            
 
                 # create model name
                 model_name = model_type.title() + ":" + str(model_settings["epochs"]) + " - " + technique_name + " - " + m_name

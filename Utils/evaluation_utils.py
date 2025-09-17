@@ -18,7 +18,7 @@ class Evaluation:
         return self.model.predict(test_gen) 
         
 
-    def calculate_metrics(self, y_true, y_probs):
+    def calculate_metrics(self, y_true, y_probs, threshold=0.5):
         '''Claculate confusion matrix (True Negative, False Positive, False Negative and True Positive) 
         and evaluation metrics (Accuracy, Precision, Recall, F1 score, AUC
         Specificity, False Positive Rate, and False Negative Rate)'''
@@ -27,8 +27,8 @@ class Evaluation:
             y_probs = y_probs[:, 1]
         elif y_probs.ndim > 1 and y_probs.shape[1] == 1:
             y_probs=y_probs.flatten()
-            
-        y_pred_class = (y_probs > 0.5).astype(int)
+              
+        y_pred_class = (y_probs >= threshold).astype(int)
 
         # get confusion matrix
         tn, fp, fn, tp = confusion_matrix(y_true, y_pred_class).ravel()

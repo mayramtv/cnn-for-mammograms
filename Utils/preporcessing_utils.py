@@ -575,7 +575,7 @@ def image_iterators(datasets,
                                  is_resnet_vgg=is_resnet_vgg, 
                                  preprocessing_techniques_name=preprocessing_techniques_name, 
                                  preprocessing_techniques=preprocessing_techniques, 
-                                 shuffle=False,
+                                 shuffle=True,
                                  image_dir=image_dir)
         val_dset = dataset_builder(val_data, 
                                    is_resnet_vgg=is_resnet_vgg, 
@@ -594,7 +594,7 @@ def image_iterators(datasets,
                              is_resnet_vgg=is_resnet_vgg, 
                              preprocessing_techniques_name=preprocessing_techniques_name, 
                              preprocessing_techniques=preprocessing_techniques, 
-                             shuffle=False)
+                             shuffle=True)
         val_dset = dataset_builder_preprocess(val_data, 
                                    is_resnet_vgg=is_resnet_vgg, 
                                    preprocessing_techniques_name=preprocessing_techniques_name, 

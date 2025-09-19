@@ -25,6 +25,9 @@ class Visualization:
         '''Plots one or more images or x-rays. Parameters:
             - data: a dictionary with the names as keys and image as values.
         '''
+        # set font size for plots
+        font = {'size': 8}
+        plt.rc('font', **font)
     
         # calculate num of columns and rows
         num_vis = len(data)

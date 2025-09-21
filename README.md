@@ -4,8 +4,8 @@ Deep learning and CNNs for X-rays mammograms for breast cancer prediction
 # Notes
 <b>If you need to experiment with the models or techniques:</b>
 The images are not stored in Git Hub due to storage constrains. 
-This folder should contained the downloaded data (DICOM, CSVs) files.
-Due to the size of the folder containing the DICOM images, the folder is
+<b>"CBIS-DDSM_Data"</b> folder should contained the downloaded data (DICOM, CSVs) files.
+Due to the size of the folder containing the DICOM images, the folder should be
 stored locally. Please dowload the data from:
 https://www.cancerimagingarchive.net/collection/cbis-ddsm/
 Please note that the CSV files are tracked in GitHub. But, if needed, 
@@ -16,7 +16,7 @@ you will need to
 1. Decompress images using <b>"P0_Decompress_Data"</b>
 2. Apply basic preprocesing to data files using <b>"P1_Basic_Preprocessing"</b>
 3. Apply preprocessing to images locally using the set of techniques using ablation or
-   by adding one at a time(both in same file) <b>"P2_0_Local_Preprocess"<b>
+   by adding one at a time(both in same file) <b>"P2_0_Local_Preprocess"</b>
 
 All models from P2 to P5, except the first model in first iteration, use the tf.Data.Dataset.
 

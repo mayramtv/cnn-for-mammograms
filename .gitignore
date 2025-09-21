@@ -195,9 +195,11 @@ cython_debug/
 
 # CBIS-DDSM image dataset
 CBIS-DDSM_Data/images_dataset/
-CBIS-DDSM_Clean_Data/labeled_images_png
-Preprocessed_Images/
-Models/
-Preprocessed_Images_1/
+CBIS-DDSM_Clean_Data/labeled_images_png/
+Models/Iteration1/
+Models/Iteration2/
+Models/Iteration3/
+Models/Iteration3.2/
+Models/Iteration4/
 Preprocessed_Images_C/
-Models_1/
+Preprocessed_Images/

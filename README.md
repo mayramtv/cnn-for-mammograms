@@ -23,7 +23,7 @@ pip install -r requirements.txt
 ```
 6. Install jupyter lab
 ```bash
-pip install jupyterlab
+pip install jupyter lab
 ```
 6. Lunch jupyter lab
 ```bash

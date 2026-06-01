@@ -11,6 +11,8 @@ The project includes a full experimentation workflow using:
 * Model evaluation and comparison
 * Final inference notebook for prediction
 
+![Project Workflow](./Assets/model_workflow.png)
+
 > **Disclaimer:** This project is for academic and research purposes only. It is not intended for clinical diagnosis or medical decision-making.
 
 ---
@@ -41,42 +43,98 @@ The project is organized into multiple phases:
 
 ## Phase 1 — Data Preparation
 
-* Download CBIS-DDSM data
-* Decompress DICOM images
-* Match image paths with metadata
-* Clean labels and prepare binary classification data
+- Download CBIS-DDSM data
+- Decompress DICOM images
+- Match image paths with metadata
+- Clean labels and prepare binary classification data
 
 ## Phase 2 — Baseline Model
 
-* Build a basic Custom CNN
-* Train on mammogram images
-* Identify dataset and label issues
-* Establish baseline performance
+- Build a basic Custom CNN
+- Train on mammogram images
+- Identify dataset and label issues
+- Establish baseline performance
 
 ## Phase 3 — Preprocessing Experiments
 
 Evaluate preprocessing techniques including:
 
-* Background removal
-* Cropping
-* Noise reduction
-* CLAHE contrast enhancement
-* Edge enhancement
-* Local Binary Pattern (LBP) texture extraction
+- Background removal
+- Cropping
+- Noise reduction
+- CLAHE contrast enhancement
+- Edge enhancement
+- Local Binary Pattern (LBP) texture extraction
 
 ## Phase 4 — Model Comparison
 
 Compare:
 
-* Custom CNN
-* VGG16 Transfer Learning
-* ResNet50 Transfer Learning
+- Custom CNN
+- VGG16 Transfer Learning
+- ResNet50 Transfer Learning
 
 ## Phase 5 — Final Inference
 
-* Load the best saved model
-* Run predictions on unseen mammogram images
-* Evaluate deployment readiness
+- Load the best saved model
+- Run predictions on unseen mammogram images
+- Evaluate deployment readiness
+
+---
+
+# Workflow Overview
+
+![Project Workflow](./Assets/model_workflow.png)
+
+The workflow begins with CBIS-DDSM mammogram data preparation, followed by preprocessing experiments, model training, evaluation, and deployment through an inference pipeline.
+
+---
+
+# Image Preprocessing Experiments
+
+The project evaluated several preprocessing techniques commonly used in medical image analysis to determine whether they improved classification performance.
+
+## Background Removal
+
+![Background Removal](./Assets/background_removal.png)
+
+Removes labels, artifacts, and non-breast regions using morphological operations and Otsu thresholding.
+
+## Cropping
+
+![Cropping](./Assets/cropping.png)
+
+Automatically identifies the breast region and removes unnecessary background to focus the model on relevant anatomy.
+
+## Noise Reduction
+
+![Noise Removal](./Assets/noise_removal.png)
+
+Comparison of wavelet-based denoising and Gaussian blur techniques for reducing image noise while preserving diagnostic features.
+
+## Contrast Enhancement (CLAHE)
+
+![Contrast Enhancement](./Assets/contrast_enhancement.png)
+
+Contrast Limited Adaptive Histogram Equalization (CLAHE) improves local contrast and visibility of structures in mammograms.
+
+## Edge Enhancement
+
+![Edge Enhancement](./Assets/edge_enhancement.png)
+
+Guided filtering was used to enhance edges while preserving important anatomical structures.
+
+## Texture Feature Extraction
+
+![Texture Information](./Assets/textural_information.png)
+
+Local Binary Pattern (LBP) texture representations were evaluated as an alternative feature extraction method.
+
+## Resizing Pipeline
+
+![Resizing](./Assets/resizing.png)
+
+Images were resized while preserving aspect ratio through zero-padding to prepare data for CNN, VGG16, and ResNet50 architectures.
 
 ---
 
@@ -93,6 +151,42 @@ Final model performance after threshold adjustment:
 | Specificity          | 45.7%  |
 
 Recall was prioritized because, in a cancer detection context, missing malignant cases is more critical than flagging additional benign cases for review.
+
+---
+
+# Model Comparison Results
+
+Several architectures were compared using the same dataset and evaluation pipeline.
+
+## Metrics Comparison
+
+![Metrics Comparison](./Assets/metrics_comparison_lines.png)
+
+Comparison of performance metrics including accuracy, recall, specificity, precision, F1-score, and AUC.
+
+## False Positive vs False Negative Trade-Off
+
+![FPR FNR Comparison](./Assets/fpr_fnr_comparison_lines.png)
+
+Medical classification systems require balancing false positives and false negatives. This visualization highlights the trade-offs between sensitivity and specificity.
+
+## ROC Curve Comparison
+
+![ROC Comparison](./Assets/roc_comparison.png)
+
+Receiver Operating Characteristic (ROC) curves were used to compare model discrimination performance across thresholds.
+
+## Radar Comparison
+
+![Radar Comparison](./Assets/model_comparison_radar.png)
+
+Radar charts provide a visual summary of model performance across all evaluation metrics.
+
+## Final Model Comparison Table
+
+![Model Comparison Table](./Assets/model_comparison_table.png)
+
+Comparison of the final Custom CNN, VGG16, and ResNet50 models. VGG16 achieved the most balanced overall performance and was selected as the final model.
 
 ---
 
